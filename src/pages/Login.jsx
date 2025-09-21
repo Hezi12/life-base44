@@ -55,7 +55,7 @@ export default function Login({ onLogin }) {
       <Card className="w-full max-w-md border-gray-100 shadow-lg">
         <CardHeader className="text-center pb-2">
           <CardTitle className="text-2xl font-light text-gray-800">
-            🚀 Life Base44
+            ✨ Life Base44
           </CardTitle>
           <p className="text-gray-500 text-sm mt-2">
             {isLogin ? 'התחבר לחשבון שלך' : 'צור חשבון חדש'}
