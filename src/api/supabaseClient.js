@@ -31,36 +31,52 @@ export class SupabaseEntity {
   }
 
   async list(orderBy = null, limit = null) {
-    let query = supabase.from(this.tableName).select('*');
-    
-    if (orderBy) {
-      if (orderBy.startsWith('-')) {
-        const field = orderBy.substring(1);
-        query = query.order(field, { ascending: false });
-      } else {
-        query = query.order(orderBy, { ascending: true });
+    try {
+      let query = supabase.from(this.tableName).select('*');
+      
+      if (orderBy) {
+        if (orderBy.startsWith('-')) {
+          const field = orderBy.substring(1);
+          query = query.order(field, { ascending: false });
+        } else {
+          query = query.order(orderBy, { ascending: true });
+        }
       }
+      
+      if (limit) {
+        query = query.limit(limit);
+      }
+      
+      const { data, error } = await query;
+      if (error) {
+        console.error(`Error in ${this.tableName}.list:`, error);
+        return []; // החזרת מערך ריק במקרה של שגיאה
+      }
+      return data || [];
+    } catch (error) {
+      console.error(`Exception in ${this.tableName}.list:`, error);
+      return []; // החזרת מערך ריק במקרה של שגיאה
     }
-    
-    if (limit) {
-      query = query.limit(limit);
-    }
-    
-    const { data, error } = await query;
-    if (error) throw error;
-    return data || [];
   }
 
   async filter(filters = {}) {
-    let query = supabase.from(this.tableName).select('*');
-    
-    Object.entries(filters).forEach(([key, value]) => {
-      query = query.eq(key, value);
-    });
-    
-    const { data, error } = await query;
-    if (error) throw error;
-    return data || [];
+    try {
+      let query = supabase.from(this.tableName).select('*');
+      
+      Object.entries(filters).forEach(([key, value]) => {
+        query = query.eq(key, value);
+      });
+      
+      const { data, error } = await query;
+      if (error) {
+        console.error(`Error in ${this.tableName}.filter:`, error);
+        return [];
+      }
+      return data || [];
+    } catch (error) {
+      console.error(`Exception in ${this.tableName}.filter:`, error);
+      return [];
+    }
   }
 
   async findById(id) {
