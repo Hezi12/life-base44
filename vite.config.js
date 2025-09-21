@@ -21,4 +21,17 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom'],
+          'ui-vendor': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-select'],
+          'date-vendor': ['moment', 'date-fns'],
+          'anthropic': ['@anthropic-ai/sdk']
+        }
+      }
+    },
+    chunkSizeWarningLimit: 1000
+  }
 }) 
