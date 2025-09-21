@@ -92,3 +92,8 @@ src/
 ## רישיון
 
 פרויקט פרטי - כל הזכויות שמורות
+
+## 🚀 Status
+- ✅ Deployed on Vercel
+- ✅ Connected to Supabase Database
+- ✅ Ready for production use
