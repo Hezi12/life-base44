@@ -58,7 +58,7 @@ function App() {
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-gray-500">טוען...</div>
+        <div className="text-gray-500">טוען את האפליקציה...</div>
       </div>
     );
   }
