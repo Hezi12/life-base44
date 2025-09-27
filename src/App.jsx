@@ -1,5 +1,5 @@
 import './App.css'
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import Pages from "@/pages/index.jsx"
 import Login from "@/pages/Login.jsx"
 import { Toaster } from "@/components/ui/toaster"

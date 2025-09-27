@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Plus, Settings, TrendingUp, Calendar, Target, Flame, Award,
-  Check, X, ChevronLeft, ChevronRight, Edit3, Trash2, RotateCcw,
+  Check, X, ChevronLeft, ChevronRight, Edit3, Edit, Trash2, RotateCcw,
   Droplets, BookOpen, Coffee, Dumbbell, Heart, Brain, Zap, 
   Leaf, Star, Sun, Moon, Clock, Bell, Home, Users, Sparkles,
   Camera, Music, Palette, Code, Phone, Mail, Car, Plane,
@@ -81,10 +81,40 @@ const getIconComponent = (iconName) => {
   return iconData ? iconData.component : Target;
 };
 
-const getIconColor = (iconName) => {
-  const iconData = availableIcons.find(icon => icon.name === iconName);
-  return iconData ? iconData.color : '#6b7280';
-};
+  const getIconColor = (iconName) => {
+    const iconData = availableIcons.find(icon => icon.name === iconName);
+    return iconData ? iconData.color : '#6b7280';
+  };
+
+  // פונקציה לחילוץ נתוני קנסות מהתיאור
+  const extractPenaltyData = (description) => {
+    if (!description) return null;
+    
+    const penaltyMatch = description.match(/PENALTY:(\d+)(?:,(\d+),(\d+))?/);
+    if (!penaltyMatch) return null;
+    
+    return {
+      enabled: true,
+      amount: parseInt(penaltyMatch[1]),
+      secondaryEnabled: !!penaltyMatch[2],
+      secondaryAmount: penaltyMatch[2] ? parseInt(penaltyMatch[2]) : 0,
+      secondaryHours: penaltyMatch[3] ? parseInt(penaltyMatch[3]) : 1
+    };
+  };
+
+  // פונקציה לחישוב קנס לפי סטטוס ההרגל
+  const calculatePenalty = (habit, status) => {
+    const penaltyData = extractPenaltyData(habit.description);
+    if (!penaltyData || status === 'completed') return 0;
+    
+    if (status === 'failed_secondary' && penaltyData.secondaryEnabled) {
+      return penaltyData.amount + penaltyData.secondaryAmount;
+    } else if (status === 'failed') {
+      return penaltyData.amount;
+    }
+    
+    return 0;
+  };
 
 // רכיב RadioToggle
 const RadioToggle = ({ checked, onCheckedChange }) => {
@@ -97,6 +127,29 @@ const RadioToggle = ({ checked, onCheckedChange }) => {
     >
       {checked && <div className="w-3 h-3 bg-blue-600 rounded-full"></div>}
     </button>
+  );
+};
+
+// רכיב PenaltyCard
+const PenaltyCard = ({ weeklyPenalties, onReset }) => {
+  return (
+    <Card className="border border-gray-100 shadow-none">
+      <CardContent className="p-4 text-center">
+        <div className="flex items-center justify-center gap-2">
+          <div className="text-2xl font-semibold text-red-600">{weeklyPenalties}₪</div>
+          {weeklyPenalties > 0 && (
+            <button
+              onClick={onReset}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+              title="איפוס קנסות"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+        <div className="text-sm text-gray-500">קנסות השבוע</div>
+      </CardContent>
+    </Card>
   );
 };
 
@@ -119,18 +172,51 @@ const WeeklyView = ({ habit, records, weekStart, onUpdate }) => {
   const handleDayClick = async (day) => {
     const dateStr = day.format('YYYY-MM-DD');
     const existingRecord = getRecordForDay(day);
-    const newCompleted = !existingRecord?.completed;
+    const penaltyData = extractPenaltyData(habit.description);
     
     try {
-      if (existingRecord) {
-        await HabitRecord.update(existingRecord.id, { completed: newCompleted });
-      } else {
+      if (!existingRecord) {
+        // אין רשומה → צור רשומה עם סטטוס failed
         await HabitRecord.create({
           habit_id: habit.id,
           date: dateStr,
-          completed: newCompleted,
-          value: newCompleted ? 1 : 0
+          completed: false,
+          notes: 'failed'
         });
+      } else {
+        // יש רשומה - קבע את הסטטוס הבא
+        const currentStatus = existingRecord.completed ? 'completed' : (existingRecord.notes || 'failed');
+        
+        if (currentStatus === 'completed') {
+          // מעבר מהושלם למחיקת הרשומה (ללא תיעוד)
+          await HabitRecord.delete(existingRecord.id);
+        } else if (currentStatus === 'failed') {
+          if (penaltyData?.secondaryEnabled) {
+            // מעבר מקנס ראשון לקנס כפול
+            await HabitRecord.update(existingRecord.id, { 
+              completed: false,
+              notes: 'failed_secondary'
+            });
+          } else {
+            // אין קנס משני - מעבר ישר להושלם
+            await HabitRecord.update(existingRecord.id, { 
+              completed: true,
+              notes: 'completed'
+            });
+          }
+        } else if (currentStatus === 'failed_secondary') {
+          // מעבר מקנס כפול להושלם
+          await HabitRecord.update(existingRecord.id, { 
+            completed: true,
+            notes: 'completed'
+          });
+        } else {
+          // מצב לא צפוי - מעבר לקנס ראשון
+          await HabitRecord.update(existingRecord.id, { 
+            completed: false,
+            notes: 'failed'
+          });
+        }
       }
       onUpdate();
     } catch (error) {
@@ -163,9 +249,27 @@ const WeeklyView = ({ habit, records, weekStart, onUpdate }) => {
   
   // חישוב סך כל הימים בתקופת ההרגל
   const getTotalDaysInRange = (habit) => {
-    const start = moment(habit.start_date);
-    const end = habit.end_date ? moment(habit.end_date) : moment();
-    return end.diff(start, 'days') + 1;
+    let startDate = moment(habit.created_at || new Date());
+    let endDate = null;
+    
+    // ניסיון לחלץ תאריכים מנתוני התדירות
+    if (habit.target_frequency && habit.target_frequency !== 'daily') {
+      try {
+        const frequencyData = JSON.parse(habit.target_frequency);
+        if (frequencyData && typeof frequencyData === 'object' && frequencyData.start_date) {
+          startDate = moment(frequencyData.start_date);
+          if (frequencyData.end_date) {
+            endDate = moment(frequencyData.end_date);
+          }
+        }
+      } catch (e) {
+        // אם יש שגיאה, נשתמש בתאריך יצירת ההרגל
+      }
+    }
+    
+    const end = endDate || moment();
+    const daysDiff = end.diff(startDate, 'days') + 1;
+    return Math.max(1, daysDiff); // לפחות יום אחד
   };
   
   return (
@@ -192,8 +296,62 @@ const WeeklyView = ({ habit, records, weekStart, onUpdate }) => {
                   </div>
                 )}
               </div>
-              {habit.description && (
-                <p className="text-sm text-gray-500">{habit.description}</p>
+              {(() => {
+                // נסנן את התיאור מנתוני הקנסות
+                const cleanDescription = habit.description?.replace(/PENALTY:.*$/m, '').trim();
+                return cleanDescription && (
+                  <p className="text-sm text-gray-500">{cleanDescription}</p>
+                );
+              })()}
+              
+              {/* הצגת קנס השבוע */}
+              {(() => {
+                const penaltyData = extractPenaltyData(habit.description);
+                if (!penaltyData) return null;
+                
+                // חישוב קנס השבוע - נשתמש ב-weekStart שמגיע מה-props
+                const weekEnd = weekStart.clone().add(6, 'days');
+                let weeklyPenalty = 0;
+                
+                for (let day = weekStart.clone(); day.isSameOrBefore(weekEnd); day.add(1, 'day')) {
+                  const record = records.find(r => r.habit_id === habit.id && r.date === day.format('YYYY-MM-DD'));
+                  if (record && !record.completed) {
+                    weeklyPenalty += calculatePenalty(habit, record.notes || 'failed');
+                  }
+                }
+                
+                return weeklyPenalty > 0 && (
+                  <p className="text-xs text-red-600 font-medium mt-1">
+                    קנס השבוע: {weeklyPenalty}₪
+                  </p>
+                );
+              })()}
+              {/* הצגת תדירות ההרגל */}
+              {habit.target_frequency && habit.target_frequency !== 'daily' && (
+                <p className="text-xs text-blue-600 mt-1">
+                  {(() => {
+                    try {
+                      const frequencyData = JSON.parse(habit.target_frequency);
+                      
+                      // אם זה האובייקט החדש עם נתוני תקופה
+                      if (frequencyData && typeof frequencyData === 'object' && frequencyData.days !== undefined) {
+                        if (Array.isArray(frequencyData.days) && frequencyData.days.length < 7) {
+                          const dayNames = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
+                          return frequencyData.days.map(d => dayNames[d]).join(', ');
+                        }
+                        return 'יומי';
+                      }
+                      // אם זה המערך הישן של ימים בלבד
+                      else if (Array.isArray(frequencyData) && frequencyData.length < 7) {
+                        const dayNames = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
+                        return frequencyData.map(d => dayNames[d]).join(', ');
+                      }
+                    } catch (e) {
+                      return 'יומי';
+                    }
+                    return 'יומי';
+                  })()}
+                </p>
               )}
             </div>
           </div>
@@ -251,10 +409,47 @@ const WeeklyView = ({ habit, records, weekStart, onUpdate }) => {
             const isFuture = day.isAfter(moment(), 'day');
             
             // בדיקה אם היום בתוך תקופת ההרגל
-            const habitStart = moment(habit.start_date);
-            const habitEnd = habit.end_date ? moment(habit.end_date) : null;
-            const isInHabitRange = day.isSameOrAfter(habitStart, 'day') && 
-                                  (habitEnd ? day.isSameOrBefore(habitEnd, 'day') : true);
+            let isInHabitRange = true;
+            
+            // חילוץ תאריכי תקופת ההרגל
+            if (habit.target_frequency && habit.target_frequency !== 'daily') {
+              try {
+                const frequencyData = JSON.parse(habit.target_frequency);
+                if (frequencyData && typeof frequencyData === 'object' && frequencyData.start_date) {
+                  const habitStart = moment(frequencyData.start_date);
+                  const habitEnd = frequencyData.end_date ? moment(frequencyData.end_date) : null;
+                  
+                  isInHabitRange = day.isSameOrAfter(habitStart, 'day') && 
+                                   (habitEnd ? day.isSameOrBefore(habitEnd, 'day') : true);
+                }
+              } catch (e) {
+                // במקרה של שגיאה, ההרגל פעיל לתמיד
+                isInHabitRange = true;
+              }
+            }
+            
+            // בדיקה אם היום נבחר בהגדרות ההרגל
+            let isDaySelected = true;
+            if (habit.target_frequency && habit.target_frequency !== 'daily') {
+              try {
+                const frequencyData = JSON.parse(habit.target_frequency);
+                
+                // אם זה האובייקט החדש עם נתוני תקופה
+                if (frequencyData && typeof frequencyData === 'object' && frequencyData.days !== undefined) {
+                  if (Array.isArray(frequencyData.days)) {
+                    isDaySelected = frequencyData.days.includes(index);
+                  } else if (frequencyData.days === 'daily') {
+                    isDaySelected = true;
+                  }
+                } 
+                // אם זה המערך הישן של ימים בלבד
+                else if (Array.isArray(frequencyData)) {
+                  isDaySelected = frequencyData.includes(index);
+                }
+              } catch (e) {
+                isDaySelected = true;
+              }
+            }
             
             return (
               <div key={day.format('YYYY-MM-DD')} className="flex flex-col items-center space-y-2">
@@ -262,19 +457,30 @@ const WeeklyView = ({ habit, records, weekStart, onUpdate }) => {
                   {hebrewDays[index]}
                 </span>
                 <button
-                  onClick={() => !isFuture && isInHabitRange && handleDayClick(day)}
-                  disabled={isFuture || !isInHabitRange}
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
-                    !isInHabitRange
+                  onClick={() => isInHabitRange && isDaySelected && handleDayClick(day)}
+                  disabled={!isInHabitRange || !isDaySelected}
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all relative ${
+                    !isDaySelected
                       ? 'bg-gray-50 border-2 border-gray-100 opacity-30 cursor-not-allowed'
-                      : isFuture 
-                        ? 'bg-gray-50 border-2 border-gray-100 cursor-not-allowed' 
+                      : !isInHabitRange
+                        ? 'bg-gray-50 border-2 border-gray-100 opacity-30 cursor-not-allowed'
                         : record?.completed 
                           ? 'bg-green-100 border-2 border-green-200 hover:bg-green-200' 
-                          : 'bg-gray-50 border-2 border-gray-200 hover:bg-gray-100'
+                          : record?.notes === 'failed_secondary'
+                            ? 'bg-red-200 border-2 border-red-400 hover:bg-red-300'
+                            : record?.notes === 'failed'
+                              ? 'bg-red-100 border-2 border-red-300 hover:bg-red-200'
+                              : isFuture
+                                ? 'bg-blue-50 border-2 border-blue-200 hover:bg-blue-100'
+                                : 'bg-gray-50 border-2 border-gray-200 hover:bg-gray-100'
                   }`}
                 >
                   {record?.completed && <Check className="w-4 h-4 text-green-600" />}
+                  {record?.notes === 'failed' && <X className="w-4 h-4 text-red-600" />}
+                  {record?.notes === 'failed_secondary' && (
+                    <div className="text-red-700 text-xs font-bold">××</div>
+                  )}
+                  {!isDaySelected && <X className="w-3 h-3 text-gray-400 absolute -top-1 -right-1" />}
                 </button>
               </div>
             );
@@ -290,6 +496,12 @@ export default function Habits() {
   const [habitRecords, setHabitRecords] = useState([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingHabit, setEditingHabit] = useState(null);
+  const [penaltyHistory, setPenaltyHistory] = useState(() => {
+    // טעינת היסטוריית קנסות מ-localStorage
+    const saved = localStorage.getItem('penalty_history');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [showPenaltyHistoryDialog, setShowPenaltyHistoryDialog] = useState(false);
   const [currentWeek, setCurrentWeek] = useState(moment().startOf('week'));
 
   // טעינת נתונים
@@ -361,27 +573,130 @@ export default function Habits() {
     }
   };
 
+  const handleResetPenalties = () => {
+    const stats = calculateStats();
+    if (stats.weeklyPenalties > 0) {
+      // שמירת הקנסות בהיסטוריה
+      const newHistoryEntry = {
+        id: Date.now(),
+        amount: stats.weeklyPenalties,
+        date: moment().format('YYYY-MM-DD'),
+        week: currentWeek.format('YYYY-MM-DD')
+      };
+      
+      const updatedHistory = [...penaltyHistory, newHistoryEntry];
+      setPenaltyHistory(updatedHistory);
+      localStorage.setItem('penalty_history', JSON.stringify(updatedHistory));
+      
+      // איפוס הקנסות - נמחק את כל הרשומות הכושלות השבוע
+      const weekStart = currentWeek.clone().startOf('week');
+      const weekEnd = currentWeek.clone().endOf('week');
+      
+      // נמצא את הרשומות הכושלות השבוע ונמחק אותן
+      habitRecords.forEach(async (record) => {
+        const recordDate = moment(record.date);
+        if (recordDate.isBetween(weekStart, weekEnd, 'day', '[]') && !record.completed) {
+          try {
+            await HabitRecord.delete(record.id);
+          } catch (error) {
+            console.error('Error deleting penalty record:', error);
+          }
+        }
+      });
+      
+      // רענון הנתונים
+      setTimeout(() => loadData(), 100);
+    }
+  };
+
+  const handleDeletePenaltyHistoryItem = (itemId) => {
+    const updatedHistory = penaltyHistory.filter(item => item.id !== itemId);
+    setPenaltyHistory(updatedHistory);
+    localStorage.setItem('penalty_history', JSON.stringify(updatedHistory));
+  };
+
+  const handleClearAllPenaltyHistory = () => {
+    if (confirm('האם אתה בטוח שברצונך למחוק את כל היסטוריית הקנסות?')) {
+      setPenaltyHistory([]);
+      localStorage.removeItem('penalty_history');
+    }
+  };
+
   const handleCloseDialog = () => {
     setIsAddDialogOpen(false);
     setEditingHabit(null);
   };
 
+  // פונקציה לבדיקה אם יום מסוים רלוונטי להרגל (כולל תקופה ויום בשבוע)
+  const isDayRelevantForHabit = (habit, dayIndex, specificDate = null) => {
+    if (!habit.target_frequency || habit.target_frequency === 'daily') {
+      return true;
+    }
+    
+    try {
+      const frequencyData = JSON.parse(habit.target_frequency);
+      
+      // אם זה האובייקט החדש עם נתוני תקופה
+      if (frequencyData && typeof frequencyData === 'object' && frequencyData.days !== undefined) {
+        // בדיקת יום בשבוע
+        let isDayOfWeekValid = true;
+        if (Array.isArray(frequencyData.days)) {
+          isDayOfWeekValid = frequencyData.days.includes(dayIndex);
+        } else if (frequencyData.days !== 'daily') {
+          isDayOfWeekValid = false;
+        }
+        
+        // בדיקת תקופה אם יש תאריך ספציפי
+        if (specificDate && frequencyData.start_date) {
+          const checkDate = moment(specificDate);
+          const habitStart = moment(frequencyData.start_date);
+          const habitEnd = frequencyData.end_date ? moment(frequencyData.end_date) : null;
+          
+          const isInTimeRange = checkDate.isSameOrAfter(habitStart, 'day') && 
+                               (habitEnd ? checkDate.isSameOrBefore(habitEnd, 'day') : true);
+          
+          return isDayOfWeekValid && isInTimeRange;
+        }
+        
+        return isDayOfWeekValid;
+      }
+      // אם זה המערך הישן של ימים בלבד
+      else if (Array.isArray(frequencyData)) {
+        return frequencyData.includes(dayIndex);
+      }
+    } catch (e) {
+      return true;
+    }
+    
+    return true;
+  };
+
   // חישוב סטטיסטיקות
   const calculateStats = () => {
     const today = moment().format('YYYY-MM-DD');
-    const todayRecords = habitRecords.filter(record => record.date === today);
-    const completedToday = todayRecords.filter(record => record.completed).length;
-    const totalHabits = habits.length;
+    const todayDayIndex = moment().day();
     
-    // חישוב ממוצע השבוע הנוכחי
-    const currentWeekDays = Array.from({ length: 7 }, (_, i) => 
-      currentWeek.clone().add(i, 'days').format('YYYY-MM-DD')
+    // חישוב הרגלים רלוונטיים להיום
+    const todayRelevantHabits = habits.filter(habit => 
+      isDayRelevantForHabit(habit, todayDayIndex, today)
     );
     
-    const weeklyCompletion = currentWeekDays.map(date => {
+    const todayRecords = habitRecords.filter(record => record.date === today);
+    const completedToday = todayRecords.filter(record => record.completed).length;
+    
+    // חישוב ממוצע השבוע הנוכחי
+    const currentWeekDays = Array.from({ length: 7 }, (_, i) => ({
+      date: currentWeek.clone().add(i, 'days').format('YYYY-MM-DD'),
+      dayIndex: i
+    }));
+    
+    const weeklyCompletion = currentWeekDays.map(({ date, dayIndex }) => {
+      const dayRelevantHabits = habits.filter(habit => 
+        isDayRelevantForHabit(habit, dayIndex, date)
+      );
       const dayRecords = habitRecords.filter(record => record.date === date);
       const completed = dayRecords.filter(record => record.completed).length;
-      return { date, completed, total: habits.length };
+      return { date, completed, total: dayRelevantHabits.length };
     });
     
     const weeklyAverage = weeklyCompletion.reduce((sum, day) => 
@@ -392,13 +707,26 @@ export default function Habits() {
     const weeklyCompleted = weeklyCompletion.reduce((sum, day) => sum + day.completed, 0);
     const weeklyTotal = weeklyCompletion.reduce((sum, day) => sum + day.total, 0);
     
+    // חישוב קנסות השבוע
+    let weeklyPenalties = 0;
+    currentWeekDays.forEach(({ date }) => {
+      const dayRecords = habitRecords.filter(record => record.date === date && !record.completed);
+      dayRecords.forEach(record => {
+        const habit = habits.find(h => h.id === record.habit_id);
+        if (habit) {
+          weeklyPenalties += calculatePenalty(habit, record.notes || 'failed');
+        }
+      });
+    });
+
     return {
       completedToday,
-      totalHabits,
-      todayPercentage: totalHabits > 0 ? Math.round((completedToday / totalHabits) * 100) : 0,
+      totalHabits: todayRelevantHabits.length,
+      todayPercentage: todayRelevantHabits.length > 0 ? Math.round((completedToday / todayRelevantHabits.length) * 100) : 0,
       weeklyAverage: Math.round(weeklyAverage),
       weeklyCompleted,
-      weeklyTotal
+      weeklyTotal,
+      weeklyPenalties
     };
   };
 
@@ -458,7 +786,7 @@ export default function Habits() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
           <Card className="border border-gray-100 shadow-none">
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-semibold text-blue-600">{stats.weeklyCompleted}</div>
@@ -475,15 +803,42 @@ export default function Habits() {
           
           <Card className="border border-gray-100 shadow-none">
             <CardContent className="p-4 text-center">
-              <div className="text-2xl font-semibold text-purple-600">{stats.completedToday}</div>
+              <div className="text-2xl font-semibold text-purple-600">
+                {stats.completedToday}/{stats.totalHabits}
+              </div>
               <div className="text-sm text-gray-500">הושלמו היום</div>
             </CardContent>
           </Card>
           
           <Card className="border border-gray-100 shadow-none">
             <CardContent className="p-4 text-center">
-              <div className="text-2xl font-semibold text-orange-600">{habits.length}</div>
-              <div className="text-sm text-gray-500">סה״כ הרגלים</div>
+              <div className="text-2xl font-semibold text-orange-600">{stats.todayPercentage}%</div>
+              <div className="text-sm text-gray-500">הצלחה היום</div>
+            </CardContent>
+          </Card>
+
+          <PenaltyCard 
+            weeklyPenalties={stats.weeklyPenalties}
+            onReset={handleResetPenalties}
+          />
+
+          <Card className="border border-gray-100 shadow-none">
+            <CardContent className="p-4 text-center">
+              <div className="flex items-center justify-center gap-2">
+                <div className="text-2xl font-semibold text-gray-600">
+                  {penaltyHistory.reduce((sum, entry) => sum + entry.amount, 0)}₪
+                </div>
+                {penaltyHistory.length > 0 && (
+                  <button
+                    onClick={() => setShowPenaltyHistoryDialog(true)}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                    title="ערוך היסטוריית קנסות"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+              <div className="text-sm text-gray-500">קנסות ששולמו</div>
             </CardContent>
           </Card>
         </div>
@@ -491,23 +846,49 @@ export default function Habits() {
         {/* Weekly View */}
         <div className="space-y-4">
           {habits.length > 0 ? (
-            habits
-              .filter(habit => {
-                // הצגת הרגל רק אם השבוע הנוכחי חופף עם תקופת ההרגל
-                const habitStart = moment(habit.start_date);
-                const habitEnd = habit.end_date ? moment(habit.end_date) : null;
+            (() => {
+              const visibleHabits = habits.filter(habit => {
+                // בדיקה אם ההרגל פעיל בשבוע הנוכחי
                 const weekStart = currentWeek.clone();
                 const weekEnd = currentWeek.clone().add(6, 'days');
                 
-                // אם אין תאריך סיום, ההרגל פעיל לתמיד
-                if (!habitEnd) {
-                  return weekEnd.isSameOrAfter(habitStart, 'day');
+                // חילוץ תאריכי תקופת ההרגל
+                let habitStart = moment(habit.created_at || new Date());
+                let habitEnd = null;
+                
+                if (habit.target_frequency && habit.target_frequency !== 'daily') {
+                  try {
+                    const frequencyData = JSON.parse(habit.target_frequency);
+                    if (frequencyData && typeof frequencyData === 'object' && frequencyData.start_date) {
+                      habitStart = moment(frequencyData.start_date);
+                      if (frequencyData.end_date) {
+                        habitEnd = moment(frequencyData.end_date);
+                      }
+                    }
+                  } catch (e) {
+                    // במקרה של שגיאה, נשתמש בתאריך יצירת ההרגל
+                  }
                 }
                 
-                // בדיקה שיש חפיפה בין השבוע לתקופת ההרגל
-                return weekStart.isSameOrBefore(habitEnd, 'day') && weekEnd.isSameOrAfter(habitStart, 'day');
-              })
-              .map((habit) => {
+                // בדיקה שיש חפיפה בין השבוע הנוכחי לתקופת ההרגל
+                const isInTimeRange = habitEnd 
+                  ? weekStart.isSameOrBefore(habitEnd, 'day') && weekEnd.isSameOrAfter(habitStart, 'day')
+                  : weekEnd.isSameOrAfter(habitStart, 'day');
+                
+                // בדיקה נוספת שיש לפחות יום אחד רלוונטי בשבוע
+                if (isInTimeRange) {
+                  const weekDays = Array.from({ length: 7 }, (_, i) => i);
+                  return weekDays.some(dayIndex => isDayRelevantForHabit(habit, dayIndex));
+                }
+                
+                return false;
+              });
+
+              if (visibleHabits.length === 0) {
+                return null; // לא מציגים כלום אם אין הרגלים
+              }
+
+              return visibleHabits.map((habit) => {
                 const habitRecordsForHabit = habitRecords.filter(r => r.habit_id === habit.id);
                 
                 return (
@@ -527,23 +908,9 @@ export default function Habits() {
                     }}
                   />
                 );
-              })
-          ) : (
-            <Card className="border border-gray-100 shadow-none">
-              <CardContent className="p-8 text-center">
-                <Target className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">אין הרגלים עדיין</h3>
-                <p className="text-gray-500 mb-4">התחל לבנות הרגלים חיוביים עם ההרגל הראשון שלך</p>
-                <Button
-                  onClick={() => setIsAddDialogOpen(true)}
-                  size="icon"
-                  className="bg-blue-50 text-blue-600 hover:bg-blue-100 w-10 h-10"
-                >
-                  <Plus className="w-5 h-5" />
-                </Button>
-              </CardContent>
-            </Card>
-          )}
+              });
+            })()
+          ) : null}
         </div>
 
 
@@ -563,6 +930,60 @@ export default function Habits() {
             />
           </DialogContent>
         </Dialog>
+
+        {/* דיאלוג עריכת היסטוריית קנסות */}
+        <Dialog open={showPenaltyHistoryDialog} onOpenChange={setShowPenaltyHistoryDialog}>
+          <DialogContent className="max-w-md" dir="rtl">
+            <DialogHeader>
+              <DialogTitle>היסטוריית קנסות</DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-3 max-h-80 overflow-y-auto">
+              {penaltyHistory.length === 0 ? (
+                <p className="text-gray-500 text-center py-4">אין היסטוריית קנסות</p>
+              ) : (
+                penaltyHistory
+                  .sort((a, b) => moment(b.date).diff(moment(a.date)))
+                  .map((item) => (
+                    <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div>
+                        <div className="font-medium text-red-600">{item.amount}₪</div>
+                        <div className="text-xs text-gray-500">
+                          {moment(item.date).format('DD/MM/YYYY')}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleDeletePenaltyHistoryItem(item.id)}
+                        className="text-gray-400 hover:text-red-500 transition-colors"
+                        title="מחק פריט"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))
+              )}
+            </div>
+            
+            {penaltyHistory.length > 0 && (
+              <div className="flex gap-2 pt-4 border-t">
+                <Button
+                  variant="outline"
+                  onClick={handleClearAllPenaltyHistory}
+                  className="flex-1 text-red-600 border-red-200 hover:bg-red-50"
+                >
+                  מחק הכל
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowPenaltyHistoryDialog(false)}
+                  className="flex-1"
+                >
+                  סגור
+                </Button>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
@@ -573,46 +994,131 @@ const AddHabitForm = ({ onClose, onAdd, editingHabit }) => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    type: 'boolean',
-    target_value: 1,
     icon: 'Target',
     color: '#3b82f6',
+    target_frequency: 'daily',
     start_date: moment().format('YYYY-MM-DD'),
     end_date: '',
-    duration_days: ''
+    duration_days: '',
+    // נתוני קנסות
+    penalty_enabled: false,
+    penalty_amount: '',
+    penalty_secondary_enabled: false,
+    penalty_secondary_amount: '',
+    penalty_secondary_hours: 1
   });
-  const [dateMode, setDateMode] = useState('end_date'); // 'end_date' או 'duration'
+  const [selectedDays, setSelectedDays] = useState([0, 1, 2, 3, 4, 5, 6]); // כל הימים כברירת מחדל
+  const [dateMode, setDateMode] = useState('unlimited'); // 'unlimited', 'end_date', 'duration'
+
+  const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+  const dayNamesShort = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
 
   useEffect(() => {
     if (editingHabit) {
+      // חילוץ נתוני קנסות מהתיאור
+      const penaltyData = extractPenaltyData(editingHabit.description);
+      const cleanDescription = editingHabit.description?.replace(/PENALTY:.*$/m, '').trim() || '';
+      
       setFormData({
         name: editingHabit.name || '',
-        description: editingHabit.description || '',
-        type: editingHabit.type || 'boolean',
-        target_value: editingHabit.target_value || 1,
+        description: cleanDescription,
         icon: editingHabit.icon || 'Target',
         color: editingHabit.color || '#3b82f6',
+        target_frequency: editingHabit.target_frequency || 'daily',
         start_date: editingHabit.start_date || moment().format('YYYY-MM-DD'),
         end_date: editingHabit.end_date || '',
-        duration_days: editingHabit.duration_days || ''
+        duration_days: editingHabit.duration_days || '',
+        // נתוני קנסות מהתיאור
+        penalty_enabled: penaltyData?.enabled || false,
+        penalty_amount: penaltyData?.amount?.toString() || '',
+        penalty_secondary_enabled: penaltyData?.secondaryEnabled || false,
+        penalty_secondary_amount: penaltyData?.secondaryAmount?.toString() || '',
+        penalty_secondary_hours: penaltyData?.secondaryHours || 1
       });
+      
+      // קביעת מצב התאריכים
+      if (editingHabit.end_date) {
+        setDateMode('end_date');
+      } else if (editingHabit.duration_days) {
+        setDateMode('duration');
+      } else {
+        setDateMode('unlimited');
+      }
+      
+      // פרסור נתוני התדירות והתקופה
+      if (editingHabit.target_frequency && editingHabit.target_frequency !== 'daily') {
+        try {
+          const frequencyData = JSON.parse(editingHabit.target_frequency);
+          
+          // אם זה האובייקט החדש עם נתוני תקופה
+          if (frequencyData && typeof frequencyData === 'object' && frequencyData.days !== undefined) {
+            // עדכון ימים
+            if (Array.isArray(frequencyData.days)) {
+              setSelectedDays(frequencyData.days);
+            } else if (frequencyData.days === 'daily') {
+              setSelectedDays([0, 1, 2, 3, 4, 5, 6]);
+            }
+            
+            // עדכון נתוני תקופה
+            if (frequencyData.start_date) {
+              setFormData(prev => ({
+                ...prev,
+                start_date: frequencyData.start_date,
+                end_date: frequencyData.end_date || '',
+              }));
+            }
+            
+            if (frequencyData.mode) {
+              setDateMode(frequencyData.mode);
+            }
+          } 
+          // אם זה המערך הישן של ימים בלבד
+          else if (Array.isArray(frequencyData)) {
+            setSelectedDays(frequencyData);
+          }
+        } catch (e) {
+          setSelectedDays([0, 1, 2, 3, 4, 5, 6]);
+        }
+      }
     } else {
       setFormData({
         name: '',
         description: '',
-        type: 'boolean',
-        target_value: 1,
         icon: 'Target',
         color: '#3b82f6',
+        target_frequency: 'daily',
         start_date: moment().format('YYYY-MM-DD'),
         end_date: '',
-        duration_days: ''
+        duration_days: '',
+        // נתוני קנסות
+        penalty_enabled: false,
+        penalty_amount: '',
+        penalty_secondary_enabled: false,
+        penalty_secondary_amount: '',
+        penalty_secondary_hours: 1
       });
+      setSelectedDays([0, 1, 2, 3, 4, 5, 6]);
+      setDateMode('unlimited');
     }
   }, [editingHabit]);
 
+  const toggleDay = (dayIndex) => {
+    if (selectedDays.includes(dayIndex)) {
+      setSelectedDays(selectedDays.filter(d => d !== dayIndex));
+    } else {
+      setSelectedDays([...selectedDays, dayIndex]);
+    }
+  };
+
+
   const handleSubmit = async () => {
     if (!formData.name.trim()) return;
+    
+    // קביעת תדירות בהתאם לימים נבחרים
+    let targetFrequency = 'daily';
+    if (selectedDays.length < 7) {
+      targetFrequency = JSON.stringify(selectedDays);
+    }
     
     // חישוב תאריך סיום אם נבחר מספר ימים
     let calculatedEndDate = formData.end_date;
@@ -620,22 +1126,48 @@ const AddHabitForm = ({ onClose, onAdd, editingHabit }) => {
       calculatedEndDate = moment(formData.start_date)
         .add(parseInt(formData.duration_days) - 1, 'days')
         .format('YYYY-MM-DD');
+    } else if (dateMode === 'unlimited') {
+      calculatedEndDate = '';
     }
     
+    // נשמור את נתוני התקופה בתדירות בצורה מיוחדת
+    let finalTargetFrequency = targetFrequency;
+    if (dateMode !== 'unlimited') {
+      const dateInfo = {
+        days: selectedDays.length < 7 ? selectedDays : 'daily',
+        start_date: formData.start_date,
+        end_date: calculatedEndDate,
+        mode: dateMode
+      };
+      finalTargetFrequency = JSON.stringify(dateInfo);
+    }
+
     const habitData = {
-      ...formData,
-      end_date: calculatedEndDate,
-      created_at: editingHabit ? editingHabit.created_at : new Date().toISOString()
+      name: formData.name,
+      description: formData.description,
+      icon: formData.icon,
+      color: formData.color,
+      target_frequency: finalTargetFrequency,
+      is_active: true,
+      // נתוני קנסות - נשמור בתיאור בפורמט מובנה
+      ...(formData.penalty_enabled && {
+        description: `${formData.description}${formData.description ? '\n' : ''}PENALTY:${formData.penalty_amount}${formData.penalty_secondary_enabled ? `,${formData.penalty_secondary_amount},${formData.penalty_secondary_hours}` : ''}`
+      })
     };
     
-    if (editingHabit) {
-      await Habit.update(editingHabit.id, habitData);
-    } else {
-      await Habit.create(habitData);
+    try {
+      if (editingHabit) {
+        await Habit.update(editingHabit.id, habitData);
+      } else {
+        await Habit.create(habitData);
+      }
+      
+      onAdd();
+      onClose();
+    } catch (error) {
+      console.error('Error saving habit:', error);
+      alert('שגיאה בשמירת ההרגל. אנא נסה שוב.');
     }
-    
-    onAdd();
-    onClose();
   };
 
   return (
@@ -645,7 +1177,7 @@ const AddHabitForm = ({ onClose, onAdd, editingHabit }) => {
         <Input
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          placeholder="למשל: שתיית 8 כוסות מים"
+          placeholder=""
           className="text-right"
         />
       </div>
@@ -655,50 +1187,114 @@ const AddHabitForm = ({ onClose, onAdd, editingHabit }) => {
         <Textarea
           value={formData.description}
           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          placeholder="תיאור קצר של ההרגל..."
+          placeholder=""
           className="text-right h-20 resize-none"
         />
       </div>
       
       <div>
-        <Label className="text-sm font-medium mb-2 block">תקופת ההרגל</Label>
-        <div className="grid grid-cols-3 gap-2 mb-3">
+        <Label className="text-sm font-medium mb-3 block">תקופת ההרגל</Label>
+        
+        {/* בחירת סוג תקופה */}
+        <div className="flex gap-2 mb-4">
+          <Button
+            type="button"
+            variant={dateMode === 'unlimited' ? "default" : "outline"}
+            size="sm"
+            onClick={() => setDateMode('unlimited')}
+            className="text-xs h-8 px-3"
+          >
+            ללא הגבלה
+          </Button>
+          <Button
+            type="button"
+            variant={dateMode === 'end_date' ? "default" : "outline"}
+            size="sm"
+            onClick={() => setDateMode('end_date')}
+            className="text-xs h-8 px-3"
+          >
+            עד תאריך
+          </Button>
+          <Button
+            type="button"
+            variant={dateMode === 'duration' ? "default" : "outline"}
+            size="sm"
+            onClick={() => setDateMode('duration')}
+            className="text-xs h-8 px-3"
+          >
+            מספר ימים
+          </Button>
+        </div>
+
+        {/* שדות תאריכים */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
           <div>
-            <Label className="text-xs text-gray-500">תאריך התחלה</Label>
+            <Label className="text-xs text-gray-500 mb-1 block">התחלה</Label>
             <Input
               type="date"
               value={formData.start_date}
               onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-              className="text-sm"
+              className="text-sm h-8"
             />
           </div>
-          <div>
-            <Label className="text-xs text-gray-500">תאריך סיום</Label>
-            <Input
-              type="date"
-              value={formData.end_date}
-              onChange={(e) => {
-                setFormData({ ...formData, end_date: e.target.value, duration_days: '' });
-                setDateMode('end_date');
-              }}
-              className="text-sm"
-            />
-          </div>
-          <div>
-            <Label className="text-xs text-gray-500">או מספר ימים</Label>
-            <Input
-              type="number"
-              min="1"
-              value={formData.duration_days}
-              onChange={(e) => {
-                setFormData({ ...formData, duration_days: e.target.value, end_date: '' });
-                setDateMode('duration');
-              }}
-              placeholder="30"
-              className="text-sm"
-            />
-          </div>
+          
+          {dateMode === 'end_date' && (
+            <div>
+              <Label className="text-xs text-gray-500 mb-1 block">סיום</Label>
+              <Input
+                type="date"
+                value={formData.end_date}
+                onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                className="text-sm h-8"
+              />
+            </div>
+          )}
+          
+          {dateMode === 'duration' && (
+            <div>
+              <Label className="text-xs text-gray-500 mb-1 block">ימים</Label>
+              <Input
+                type="number"
+                min="1"
+                value={formData.duration_days}
+                onChange={(e) => setFormData({ ...formData, duration_days: e.target.value })}
+                placeholder="30"
+                className="text-sm h-8"
+              />
+            </div>
+          )}
         </div>
+      </div>
+
+      <div>
+        <Label className="text-sm font-medium mb-3 block">ימים בשבוע</Label>
+
+        {/* בחירת ימים */}
+        <div className="flex gap-2 justify-center">
+          {dayNamesShort.map((day, index) => (
+            <Button
+              key={index}
+              type="button"
+              variant={selectedDays.includes(index) ? "default" : "outline"}
+              size="sm"
+              onClick={() => toggleDay(index)}
+              title={dayNames[index]}
+              className={`h-8 w-10 text-xs transition-all ${
+                selectedDays.includes(index) 
+                  ? 'bg-blue-100 text-blue-700 border-blue-300 hover:bg-blue-200' 
+                  : 'hover:bg-gray-100'
+              }`}
+            >
+              {day}
+            </Button>
+          ))}
+        </div>
+        
+        {selectedDays.length === 0 && (
+          <p className="text-xs text-red-500 mt-2 text-center">
+            יש לבחור לפחות יום אחד
+          </p>
+        )}
       </div>
 
       <div>
@@ -723,6 +1319,77 @@ const AddHabitForm = ({ onClose, onAdd, editingHabit }) => {
           })}
         </div>
       </div>
+
+      {/* הגדרות קנסות */}
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <RadioToggle 
+            checked={formData.penalty_enabled} 
+            onCheckedChange={(checked) => setFormData({...formData, penalty_enabled: checked})}
+          />
+          <Label className="text-sm font-medium">הוסף קנס כספי</Label>
+        </div>
+        
+        {formData.penalty_enabled && (
+          <div className="space-y-3 bg-gray-50 p-3 rounded-lg">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs text-gray-600 mb-1 block">קנס בסיסי</Label>
+                <div className="flex items-center gap-1">
+                  <Input
+                    type="number"
+                    min="1"
+                    value={formData.penalty_amount}
+                    onChange={(e) => setFormData({...formData, penalty_amount: e.target.value})}
+                    placeholder="40"
+                    className="text-sm h-8 flex-1"
+                  />
+                  <span className="text-xs text-gray-500">₪</span>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2 pt-5">
+                <RadioToggle 
+                  checked={formData.penalty_secondary_enabled} 
+                  onCheckedChange={(checked) => setFormData({...formData, penalty_secondary_enabled: checked})}
+                />
+                <Label className="text-xs text-gray-600">קנס נוסף</Label>
+              </div>
+            </div>
+            
+            {formData.penalty_secondary_enabled && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs text-gray-600 mb-1 block">קנס נוסף</Label>
+                  <div className="flex items-center gap-1">
+                    <Input
+                      type="number"
+                      min="1"
+                      value={formData.penalty_secondary_amount}
+                      onChange={(e) => setFormData({...formData, penalty_secondary_amount: e.target.value})}
+                      placeholder="60"
+                      className="text-sm h-8 flex-1"
+                    />
+                    <span className="text-xs text-gray-500">₪</span>
+                  </div>
+                </div>
+                
+                <div>
+                  <Label className="text-xs text-gray-600 mb-1 block">אחרי (שעות)</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="24"
+                    value={formData.penalty_secondary_hours}
+                    onChange={(e) => setFormData({...formData, penalty_secondary_hours: parseInt(e.target.value) || 1})}
+                    className="text-sm h-8 w-16"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
       
       <div className="flex justify-end gap-2 pt-4">
         <Button variant="outline" onClick={onClose}>
@@ -730,7 +1397,12 @@ const AddHabitForm = ({ onClose, onAdd, editingHabit }) => {
         </Button>
         <Button
           onClick={handleSubmit}
-          disabled={!formData.name.trim()}
+          disabled={
+            !formData.name.trim() || 
+            selectedDays.length === 0 || 
+            (formData.penalty_enabled && !formData.penalty_amount) ||
+            (formData.penalty_secondary_enabled && !formData.penalty_secondary_amount)
+          }
           className="bg-blue-50 text-blue-600 hover:bg-blue-100"
         >
           {editingHabit ? 'שמור שינויים' : 'הוסף הרגל'}

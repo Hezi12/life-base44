@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { UploadCloud, Trash2, Pencil, Download, Upload } from 'lucide-react'; // Added Pencil for edit icon
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -30,7 +30,25 @@ export default function FocusHistory() {
 
     const loadSessions = async () => {
         const data = await FocusSession.list('-session_number');
-        setSessions(data);
+        console.log('🔍 נתונים שנטענו מהמסד:', data.length, 'מיקודים');
+        if (data.length > 0) {
+            console.log('📋 דוגמה של מיקוד ראשון:', {
+                id: data[0].id,
+                session_number: data[0].session_number,
+                notes: data[0].notes?.substring(0, 50) + '...',
+                content: data[0].content?.substring(0, 50) + '...',
+                hasNotes: !!data[0].notes,
+                hasContent: !!data[0].content
+            });
+        }
+        
+        // מיפוי חזרה מ-notes ל-content כדי שהתצוגה תעבוד
+        const mappedData = data.map(session => ({
+            ...session,
+            content: session.notes || session.content // תמיכה בשני השדות
+        }));
+        console.log('✅ מיפוי הושלם, מיקודים עם תוכן:', mappedData.filter(s => s.content).length);
+        setSessions(mappedData);
     };
 
     // פונקציה לבדיקה אם המיקוד התחיל בזמן
@@ -58,9 +76,9 @@ export default function FocusHistory() {
     const handleEditSession = (session) => {
         setEditingSession(session);
         setEditContent(session.content);
-        // Format for datetime-local input
-        setEditStartTime(moment(session.start_time).format('YYYY-MM-DDTHH:mm'));
-        setEditNextSessionTime(session.next_session_suggestion ? moment(session.next_session_suggestion).format('YYYY-MM-DDTHH:mm') : '');
+        // Format for datetime-local input - התאמה לזמן מקומי
+        setEditStartTime(moment(session.start_time).utcOffset('+03:00').format('YYYY-MM-DDTHH:mm'));
+        setEditNextSessionTime(session.next_session_suggestion ? moment(session.next_session_suggestion).utcOffset('+03:00').format('YYYY-MM-DDTHH:mm') : '');
         setIsEditDialogOpen(true);
     };
 
@@ -69,12 +87,13 @@ export default function FocusHistory() {
 
         try {
             const updatedData = {
-                content: editContent,
-                // Convert back to ISO string for database
-                start_time: new Date(editStartTime).toISOString(), 
-                next_session_suggestion: editNextSessionTime ? new Date(editNextSessionTime).toISOString() : null
+                notes: editContent, // תיקון: content -> notes כדי להתאים לסכמת המסד
+                // המרת זמן מקומי ל-UTC לשמירה במסד
+                start_time: moment(editStartTime).utcOffset('+03:00').utc().toISOString(), 
+                next_session_suggestion: editNextSessionTime ? moment(editNextSessionTime).utcOffset('+03:00').utc().toISOString() : null
             };
 
+            console.log('🔧 מעדכן מיקוד:', updatedData);
             await FocusSession.update(editingSession.id, updatedData);
             await loadSessions(); // Reload sessions to reflect changes
             setIsEditDialogOpen(false);
@@ -122,6 +141,10 @@ export default function FocusHistory() {
     };
 
     const handleImport = async () => {
+        console.log('🔄 התחלת תהליך ייבוא טקסט');
+        console.log('📝 טקסט לייבוא (אורך:', importText.length, 'תווים):');
+        console.log('📄 תחילת הטקסט:', importText.substring(0, 200));
+        
         setIsImporting(true);
         
         try {
@@ -156,28 +179,41 @@ ${importText}`;
   ]
 }`;
 
+            console.log('🤖 שולח בקשה ל-Claude AI...');
             const aiResponse = await InvokeLLM({
                 prompt: promptWithFormat
             });
+            
+            console.log('✅ התקבלה תגובה מ-Claude AI');
+            console.log('📋 תגובת AI (200 תווים ראשונים):', aiResponse.substring(0, 200));
 
             // נסה לפרס את התגובה כ-JSON
             let parsedResult;
             try {
+                console.log('🔍 מנסה לפרסר את התגובה כ-JSON...');
                 parsedResult = JSON.parse(aiResponse);
+                console.log('✅ JSON פורסר בהצלחה');
+                console.log('📊 מבנה התגובה:', Object.keys(parsedResult));
             } catch (error) {
-                console.error('Failed to parse AI response as JSON:', error);
-                throw new Error('AI לא החזיר פורמט JSON תקין');
+                console.error('❌ שגיאה בפירסור JSON:', error);
+                console.error('📋 התגובה שגרמה לשגיאה:', aiResponse);
+                throw new Error(`AI לא החזיר פורמט JSON תקין: ${error.message}`);
             }
 
             if (parsedResult && parsedResult.sessions && Array.isArray(parsedResult.sessions)) {
+                console.log(`📈 נמצאו ${parsedResult.sessions.length} מיקודים לעיבוד`);
+                
                 // עיבוד הנתונים והמרה לפורמט מקומי
-                const processedSessions = parsedResult.sessions.map(session => {
+                const processedSessions = parsedResult.sessions.map((session, index) => {
+                    console.log(`🔄 מעבד מיקוד ${index + 1}:`, session);
+                    
                     // המרת תאריך מ DD/MM/YYYY ל YYYY-MM-DD
                     const [day, month, year] = session.date.split('/');
                     const dateStr = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
                     
                     // יצירת זמן התחלה מקומי
                     const startDateTime = `${dateStr}T${session.time}:00`;
+                    console.log(`⏰ זמן התחלה: ${startDateTime}`);
                     
                     // יצירת זמן מיקוד הבא אם קיים
                     let nextSessionDateTime = null;
@@ -195,30 +231,46 @@ ${importText}`;
                         } else {
                             nextSessionDateTime = `${dateStr}T${nextTime}:00`;
                         }
+                        console.log(`⏭️ זמן המיקוד הבא: ${nextSessionDateTime}`);
                     }
 
-                    return {
+                    const processedSession = {
                         session_number: session.session_number,
                         start_time: startDateTime,
                         end_time: startDateTime, // נעדכן מאוחר יותר אם צריך
                         content: session.content.trim(),
                         next_session_suggestion: nextSessionDateTime,
                     };
+                    
+                    console.log(`✅ מיקוד ${index + 1} עובד בהצלחה:`, processedSession);
+                    return processedSession;
                 });
 
+                console.log('💾 שומר את כל המיקודים במסד הנתונים...');
                 await FocusSession.bulkCreate(processedSessions);
+                
+                console.log('🔄 מרענן את רשימת המיקודים...');
                 loadSessions();
                 setImportText('');
                 setIsImportDialogOpen(false);
+                
+                console.log('🎉 ייבוא הושלם בהצלחה!');
                 alert('המיקודים יובאו בהצלחה!');
             } else {
+                console.error('❌ מבנה התגובה לא תקין:', parsedResult);
                 alert('לא ניתן לפרסר את הטקסט. אנא ודא שהפורמט תקין.');
             }
         } catch (error) {
-            console.error('Error importing sessions:', error);
-            alert('שגיאה בייבוא המיקודים. אנא נסה שוב מאוחר יותר.');
+            console.error('💥 שגיאה כללית בייבוא טקסט:', error);
+            console.error('📋 פרטי השגיאה המלאים:', {
+                message: error.message,
+                stack: error.stack,
+                name: error.name
+            });
+            alert(`שגיאה בייבוא המיקודים: ${error.message}`);
         } finally {
             setIsImporting(false);
+            console.log('🏁 סיום תהליך ייבוא טקסט');
         }
     };
 
@@ -285,61 +337,147 @@ ${nextTime ? `→ המיקוד הבא ${nextTime.format('HH:mm DD/MM/YYYY')}` : 
 
     // פונקציה לטיפול בייבוא קבצים
     const handleFileImport = async (event) => {
+        console.log('🔄 התחלת תהליך ייבוא קובץ');
+        
         const file = event.target.files[0];
-        if (!file) return;
+        if (!file) {
+            console.log('❌ לא נבחר קובץ');
+            return;
+        }
+
+        console.log('📁 פרטי הקובץ:', {
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            lastModified: new Date(file.lastModified)
+        });
 
         try {
+            console.log('📖 מתחיל לקרוא את תוכן הקובץ...');
             const text = await file.text();
+            console.log('✅ תוכן הקובץ נקרא בהצלחה. אורך:', text.length, 'תווים');
+            console.log('📝 תחילת התוכן (100 תווים ראשונים):', text.substring(0, 100));
             
             if (file.name.endsWith('.json')) {
-                // טיפול בקובץ JSON
-                const data = JSON.parse(text);
+                console.log('🔧 מזהה קובץ JSON - מתחיל לפרסר...');
                 
+                let data;
+                try {
+                    data = JSON.parse(text);
+                    console.log('✅ JSON פורסר בהצלחה');
+                    console.log('📊 מבנה הנתונים:', Object.keys(data));
+                } catch (parseError) {
+                    console.error('❌ שגיאה בפירסור JSON:', parseError);
+                    throw new Error(`שגיאה בפירסור JSON: ${parseError.message}`);
+                }
+                
+                console.log('🔍 בודק אם יש focus_sessions בנתונים...');
                 if (data.focus_sessions && Array.isArray(data.focus_sessions)) {
-                    let imported = 0;
+                    console.log(`✅ נמצאו ${data.focus_sessions.length} מיקודים בקובץ`);
+                    console.log('ℹ️ מתאים נתונים לסכמת המסד הנתונים הנוכחית (content->notes, מסיר עמודות שלא קיימות)');
                     
-                    for (const session of data.focus_sessions) {
-                        // המרת הנתונים לפורמט המקומי
-                        const sessionData = {
+                    let imported = 0;
+                    let fixedTimestamps = 0;
+                    
+                    for (let i = 0; i < data.focus_sessions.length; i++) {
+                        const session = data.focus_sessions[i];
+                        console.log(`📥 מייבא מיקוד ${i + 1}/${data.focus_sessions.length}:`, {
                             session_number: session.session_number,
                             start_time: session.start_time,
-                            end_time: session.end_time,
-                            duration_minutes: session.duration_minutes,
-                            content: session.content,
-                            ai_summary: session.ai_summary,
-                            ai_affirmation: session.ai_affirmation,
-                            next_session_suggestion: session.next_session_suggestion,
-                            template_format: session.template_format || `מיקוד ${session.session_number} – ${moment(session.start_time).format('DD/MM/YYYY')} | ${moment(session.start_time).format('HH:mm')}
-
-${session.content}
-
-${session.next_session_suggestion ? `→ המיקוד הבא ${moment(session.next_session_suggestion).format('HH:mm DD/MM/YYYY')}` : ''}`
-                        };
+                            content_length: session.content?.length || 0
+                        });
                         
-                        await FocusSession.create(sessionData);
-                        imported++;
+                        try {
+                            // פונקציה לבדיקת ותיקון ערכי זמן
+                            const validateAndFixTimestamp = (timestamp, fieldName) => {
+                                if (!timestamp) return null;
+                                
+                                // בדיקה אם יש טקסט בעברית בזמן
+                                if (timestamp.includes('בבוקר') || timestamp.includes('בערב') || timestamp.includes('אחר הצהריים')) {
+                                    console.log(`⚠️ זמן לא תקין ב-${fieldName}: ${timestamp} - מוחק ערך`);
+                                    fixedTimestamps++;
+                                    return null;
+                                }
+                                
+                                // בדיקה אם הזמן תקין
+                                try {
+                                    // אם הזמן כבר ב-UTC (מסתיים ב-Z), החזר כמו שהוא
+                                    if (timestamp.endsWith('Z')) {
+                                        new Date(timestamp); // רק בדיקת תקינות
+                                        return timestamp;
+                                    }
+                                    
+                                    // אחרת, נניח שזה זמן ישראלי וצריך להמיר ל-UTC
+                                    const israeliTime = moment(timestamp).utcOffset('+03:00');
+                                    const utcTime = israeliTime.utc().toISOString();
+                                    console.log(`🔄 המרת זמן ישראלי ל-UTC: ${timestamp} -> ${utcTime}`);
+                                    return utcTime;
+                                } catch {
+                                    console.log(`⚠️ זמן לא תקין ב-${fieldName}: ${timestamp} - מוחק ערך`);
+                                    fixedTimestamps++;
+                                    return null;
+                                }
+                            };
+
+                            // המרת הנתונים לפורמט המקומי - התאמה לסכמת המסד נתונים
+                            const sessionData = {
+                                session_number: session.session_number,
+                                start_time: validateAndFixTimestamp(session.start_time, 'start_time'),
+                                end_time: validateAndFixTimestamp(session.end_time, 'end_time'),
+                                duration_minutes: session.duration_minutes,
+                                notes: session.content || session.notes, // התאמה: content -> notes
+                                next_session_suggestion: validateAndFixTimestamp(session.next_session_suggestion, 'next_session_suggestion'),
+                                status: session.status || 'completed' // ברירת מחדל
+                                // הסרנו: ai_summary, ai_affirmation, template_format - לא קיימים בסכמה
+                            };
+                            
+                            console.log('🔧 נתונים מותאמים לסכמה:', sessionData);
+                            console.log('💾 שומר מיקוד במסד הנתונים...');
+                            await FocusSession.create(sessionData);
+                            imported++;
+                            console.log(`✅ מיקוד ${i + 1} נשמר בהצלחה`);
+                            
+                        } catch (sessionError) {
+                            console.error(`❌ שגיאה בשמירת מיקוד ${i + 1}:`, sessionError);
+                            console.error('📋 נתוני המיקוד שגרמו לשגיאה:', session);
+                            throw new Error(`שגיאה בשמירת מיקוד ${i + 1}: ${sessionError.message}`);
+                        }
                     }
                     
-                    alert(`יובאו בהצלחה ${imported} מיקודים מקובץ JSON!`);
+                    console.log(`🎉 ייבוא הושלם בהצלחה! יובאו ${imported} מיקודים`);
+                    if (fixedTimestamps > 0) {
+                        console.log(`🔧 תוקנו ${fixedTimestamps} ערכי זמן לא תקינים`);
+                        alert(`יובאו בהצלחה ${imported} מיקודים מקובץ JSON!\n(תוקנו ${fixedTimestamps} ערכי זמן לא תקינים)`);
+                    } else {
+                        alert(`יובאו בהצלחה ${imported} מיקודים מקובץ JSON!`);
+                    }
                     loadSessions(); // רענן את הרשימה
                     
                 } else {
-                    throw new Error('קובץ JSON לא מכיל focus_sessions');
+                    console.error('❌ מבנה הקובץ לא תקין. נתונים שנמצאו:', data);
+                    throw new Error('קובץ JSON לא מכיל focus_sessions או שהוא לא מערך');
                 }
                 
             } else {
+                console.log('📄 מזהה קובץ טקסט - פותח דיאלוג ייבוא');
                 // טיפול בקובץ טקסט - פתח את הדיאלוג עם הטקסט
                 setImportText(text);
                 setIsImportDialogOpen(true);
             }
             
         } catch (error) {
-            console.error('Error importing file:', error);
+            console.error('💥 שגיאה כללית בייבוא הקובץ:', error);
+            console.error('📋 פרטי השגיאה המלאים:', {
+                message: error.message,
+                stack: error.stack,
+                name: error.name
+            });
             alert(`שגיאה בייבוא הקובץ: ${error.message}`);
         }
         
         // נקה את הקלט
         event.target.value = '';
+        console.log('🧹 קלט הקובץ נוקה');
     };
 
     return (
@@ -409,7 +547,7 @@ ${session.next_session_suggestion ? `→ המיקוד הבא ${moment(session.ne
                                 <div>
                                     <CardTitle className="text-lg font-medium">מיקוד #{session.session_number}</CardTitle>
                                     <p className="text-sm text-gray-500">
-                                        {moment(session.start_time).format('DD/MM/YYYY, HH:mm')}
+                                        {moment(session.start_time).utcOffset('+03:00').format('DD/MM/YYYY, HH:mm')}
                                         {session.session_number > 1 && (() => {
                                             const timingStatus = getTimingStatus(session);
                                             return timingStatus ? (
@@ -453,7 +591,7 @@ ${session.next_session_suggestion ? `→ המיקוד הבא ${moment(session.ne
                                         <div className="flex items-center gap-2 pt-2 border-t border-gray-200">
                                             <span className="text-sm text-gray-700">המיקוד הבא:</span>
                                             <div className="bg-white px-2 py-1 rounded border text-sm">
-                                                {moment(session.next_session_suggestion).format('HH:mm DD/MM/YYYY')}
+                                                {moment(session.next_session_suggestion).utcOffset('+03:00').format('HH:mm DD/MM/YYYY')}
                                             </div>
                                         </div>
                                     )}
@@ -473,9 +611,12 @@ ${session.next_session_suggestion ? `→ המיקוד הבא ${moment(session.ne
 
                 {/* Import Dialog */}
                 <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
-                    <DialogContent className="max-w-2xl" dir="rtl">
+                    <DialogContent className="max-w-2xl" dir="rtl" aria-describedby="import-dialog-description">
                         <DialogHeader>
                             <DialogTitle>ייבוא מיקודים</DialogTitle>
+                            <div id="import-dialog-description" className="sr-only">
+                                דיאלוג לייבוא מיקודים מטקסט
+                            </div>
                         </DialogHeader>
                         <div className="space-y-4">
                             <Textarea
@@ -505,9 +646,12 @@ ${session.next_session_suggestion ? `→ המיקוד הבא ${moment(session.ne
 
                 {/* Edit Dialog */}
                 <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-                    <DialogContent className="max-w-xl" dir="rtl">
+                    <DialogContent className="max-w-xl" dir="rtl" aria-describedby="edit-dialog-description">
                         <DialogHeader>
                             <DialogTitle>עריכת מיקוד</DialogTitle>
+                            <div id="edit-dialog-description" className="sr-only">
+                                דיאלוג לעריכת פרטי המיקוד כולל תוכן וזמנים
+                            </div>
                         </DialogHeader>
                         <div className="grid gap-4 py-4">
                             <div className="grid grid-cols-4 items-center gap-4">
