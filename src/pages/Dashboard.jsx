@@ -80,17 +80,23 @@ export default function Dashboard() {
             // Add small delay to prevent server overload between critical API calls
             await new Promise(resolve => setTimeout(resolve, 100));
             
-            const events = await Event.filter({ date: dateStr });
+            // טען אירועים של היום והיום הבא (למקרה של סשנים שחוצים חצות)
+            const tomorrowStr = moment().add(1, 'day').format('YYYY-MM-DD');
+            const todayEvents = await Event.filter({ date: dateStr });
+            const tomorrowEvents = await Event.filter({ date: tomorrowStr });
+            const events = [...todayEvents, ...tomorrowEvents];
+            
 
             const now = moment();
 
+            // מצא את האירוע הנוכחי
             const current = events.find(event => {
                 const eventStart = moment(event.start_time);
                 const eventEnd = moment(event.end_time);
                 return now.isBetween(eventStart, eventEnd);
             });
 
-            // Check if current event is a "computer session"
+            // Check if current event is a "computer session" and find connected sessions
             let computerSession = null;
             if (current) {
                 const isComputerSession = current.title?.toLowerCase().includes('מחשב') ||
@@ -98,7 +104,71 @@ export default function Dashboard() {
                                         current.category === 'עבודה';
                 
                 if (isComputerSession) {
-                    computerSession = current;
+                    // מצא אירועי מחשב רצופים
+                    const computerEvents = events.filter(event => {
+                        const isComputerEvent = event.title?.toLowerCase().includes('מחשב') ||
+                                              event.title?.toLowerCase().includes('עבודה') ||
+                                              event.category === 'עבודה';
+                        return isComputerEvent;
+                    }).sort((a, b) => moment(a.start_time).diff(moment(b.start_time)));
+
+                    // מצא רצף של אירועים שמתחיל מהאירוע הנוכחי
+                    const connectedSessions = [];
+                    let currentEventIndex = computerEvents.findIndex(e => e.id === current.id);
+                    
+                    if (currentEventIndex !== -1) {
+                        // התחל מהאירוע הנוכחי
+                        connectedSessions.push(computerEvents[currentEventIndex]);
+                        
+                        // חפש אירועים רצופים קדימה
+                        for (let i = currentEventIndex + 1; i < computerEvents.length; i++) {
+                            const prevEvent = computerEvents[i - 1];
+                            const currentEvent = computerEvents[i];
+                            
+                            const prevEnd = moment(prevEvent.end_time);
+                            const currentStart = moment(currentEvent.start_time);
+                            
+                            // אם האירועים מחוברים (הפרש של עד 5 דקות)
+                            if (currentStart.diff(prevEnd, 'minutes') <= 5) {
+                                connectedSessions.push(currentEvent);
+                            } else {
+                                break; // הפסק אם יש פער גדול
+                            }
+                        }
+                        
+                        // חפש אירועים רצופים אחורה
+                        for (let i = currentEventIndex - 1; i >= 0; i--) {
+                            const nextEvent = computerEvents[i + 1];
+                            const currentEvent = computerEvents[i];
+                            
+                            const currentEnd = moment(currentEvent.end_time);
+                            const nextStart = moment(nextEvent.start_time);
+                            
+                            // אם האירועים מחוברים (הפרש של עד 5 דקות)
+                            if (nextStart.diff(currentEnd, 'minutes') <= 5) {
+                                connectedSessions.unshift(currentEvent);
+                            } else {
+                                break; // הפסק אם יש פער גדול
+                            }
+                        }
+                    }
+                    
+                    // צור אירוע מחובר אחד
+                    if (connectedSessions.length > 0) {
+                        const firstSession = connectedSessions[0];
+                        const lastSession = connectedSessions[connectedSessions.length - 1];
+                        
+                        
+                        computerSession = {
+                            ...firstSession,
+                            start_time: firstSession.start_time,
+                            end_time: lastSession.end_time,
+                            title: `במחשב (${connectedSessions.length} סשנים מחוברים)`,
+                            connected_sessions: connectedSessions
+                        };
+                    } else {
+                        computerSession = current;
+                    }
                     
                     // Small delay before next API calls
                     await new Promise(resolve => setTimeout(resolve, 100));
@@ -110,10 +180,56 @@ export default function Dashboard() {
                     await new Promise(resolve => setTimeout(resolve, 100));
                     
                     const allTopics = await WorkTopic.filter({ date: dateStr });
-                    const sessionTopics = allTopics.filter(topic =>
-                        topic.event_id === current.id
-                    );
-                    setWorkTopics(sessionTopics);
+                    
+                    // אם יש סשנים מחוברים, טען נושאים מכל הסשנים
+                    let sessionTopics = [];
+                    if (computerSession.connected_sessions) {
+                        const connectedSessionIds = computerSession.connected_sessions.map(s => s.id);
+                        sessionTopics = allTopics.filter(topic =>
+                            connectedSessionIds.includes(topic.event_id)
+                        );
+                    } else {
+                        sessionTopics = allTopics.filter(topic =>
+                            topic.event_id === current.id
+                        );
+                    }
+                    
+                    // תיקון נושאים עם duration שלילי (בעיית חצות)
+                    const correctedTopics = await Promise.all(sessionTopics.map(async (topic) => {
+                        if (topic.duration_minutes < 0) {
+                            const startUTC = moment.utc(topic.start_time);
+                            const endUTC = moment.utc(topic.end_time);
+                            
+                            // אם זמן הסיום קטן מזמן ההתחלה, הוסף יום
+                            if (endUTC.isBefore(startUTC)) {
+                                const correctedEndUTC = endUTC.add(1, 'day');
+                                const correctedDurationSeconds = correctedEndUTC.diff(startUTC, 'seconds');
+                                const correctedDurationMinutes = Math.round(correctedDurationSeconds / 60);
+                                
+                                // עדכן את הנושא במסד הנתונים
+                                const updatedData = {
+                                    end_time: correctedEndUTC.toISOString(),
+                                    duration_minutes: correctedDurationMinutes
+                                };
+                                
+                                try {
+                                    await WorkTopic.update(topic.id, updatedData);
+                                    
+                                    return {
+                                        ...topic,
+                                        end_time: correctedEndUTC.toISOString(),
+                                        duration_minutes: correctedDurationMinutes
+                                    };
+                                } catch (error) {
+                                    console.error(`Failed to update topic "${topic.topic}":`, error);
+                                    return topic;
+                                }
+                            }
+                        }
+                        return topic;
+                    }));
+                    
+                    setWorkTopics(correctedTopics);
                     
                     await new Promise(resolve => setTimeout(resolve, 100));
                     
@@ -147,6 +263,31 @@ export default function Dashboard() {
     useEffect(() => {
         loadTodayEvents();
     }, [loadTodayEvents]); // Depend on loadTodayEvents useCallback to get latest version
+
+    // Listen for work topics changes from Computer page
+    useEffect(() => {
+        const handleStorageChange = (e) => {
+            if (e.key === 'work_topics_updated' && currentComputerSession) {
+                loadTodayEvents();
+            }
+        };
+
+        window.addEventListener('storage', handleStorageChange);
+        
+        // Also listen for custom events (same tab)
+        const handleCustomEvent = () => {
+            if (currentComputerSession) {
+                loadTodayEvents();
+            }
+        };
+
+        window.addEventListener('workTopicsUpdated', handleCustomEvent);
+
+        return () => {
+            window.removeEventListener('storage', handleStorageChange);
+            window.removeEventListener('workTopicsUpdated', handleCustomEvent);
+        };
+    }, [loadTodayEvents, currentComputerSession]);
 
     // Reduced interval frequency and added conditions
     useEffect(() => {
@@ -301,6 +442,7 @@ export default function Dashboard() {
                                 onAddTopic={addWorkTopic}
                                 onUpdateTopic={updateWorkTopic}
                                 onDeleteTopic={deleteWorkTopic}
+                                connectedSessions={currentComputerSession.connected_sessions}
                             />
                         </div>
 

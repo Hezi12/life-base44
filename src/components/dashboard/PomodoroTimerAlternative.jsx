@@ -132,36 +132,32 @@ const playPomodoroSound = (soundId) => {
 
 // חישוב מחזורים חכם עם הגדרות מותאמות אישית
 const calculateCycles = (totalMinutes, workDuration = 60, breakDuration = 5) => {
+  
   const cycles = [];
   let remainingMinutes = totalMinutes;
   
   while (remainingMinutes > 0) {
     const cycleWithBreak = workDuration + breakDuration;
     
+    
     if (remainingMinutes >= cycleWithBreak) {
       const afterRegularCycle = remainingMinutes - cycleWithBreak;
       
-      if (afterRegularCycle > 0 && afterRegularCycle < (workDuration * 0.6)) {
-        cycles.push({
-          type: 'work',
-          duration: remainingMinutes,
-          hasBreak: false
-        });
-        remainingMinutes = 0;
-      } else {
-        cycles.push({
-          type: 'work',
-          duration: workDuration,
-          hasBreak: true
-        });
-        cycles.push({
-          type: 'break',
-          duration: breakDuration,
-          hasBreak: false
-        });
-        remainingMinutes -= cycleWithBreak;
-      }
+      
+      // אם יש מספיק זמן למחזור מלא, הוסף אותו
+      cycles.push({
+        type: 'work',
+        duration: workDuration,
+        hasBreak: true
+      });
+      cycles.push({
+        type: 'break',
+        duration: breakDuration,
+        hasBreak: false
+      });
+      remainingMinutes -= cycleWithBreak;
     } else {
+      
       if (remainingMinutes >= (workDuration * 0.6)) {
         cycles.push({
           type: 'work',
@@ -190,7 +186,8 @@ export default function PomodoroTimerAlternative({
   workSubjects, 
   onAddTopic, 
   onUpdateTopic, 
-  onDeleteTopic 
+  onDeleteTopic,
+  connectedSessions = null // מידע על סשנים מחוברים
 }) {
   const [currentCycleIndex, setCurrentCycleIndex] = useState(0);
   const [timeLeft, setTimeLeft] = useState(0);
@@ -230,12 +227,94 @@ export default function PomodoroTimerAlternative({
   // חישוב מחזורים וטיימר
   useEffect(() => {
     if (sessionStart && sessionEnd && settings) {
-      const totalMinutes = moment(sessionEnd).diff(moment(sessionStart), 'minutes');
-      const calculatedCycles = calculateCycles(
-        totalMinutes, 
-        settings.work_duration_minutes, 
-        settings.break_duration_minutes
-      );
+      let calculatedCycles = [];
+      
+      if (connectedSessions && connectedSessions.length > 1) {
+        // אם יש סשנים מחוברים, חשב מחזורים לכל סשן בנפרד
+        
+        // חשב מחזורים על הזמן הכולל של כל הסשנים המחוברים
+        let totalWorkTime = 0;
+        
+        connectedSessions.forEach((session, sessionIndex) => {
+          const sessionStart = moment(session.start_time);
+          const sessionEnd = moment(session.end_time);
+          const sessionMinutes = sessionEnd.diff(sessionStart, 'minutes');
+          
+          
+          // הוסף את הזמן של הסשן הנוכחי לזמן העבודה הכולל
+          totalWorkTime += sessionMinutes;
+          
+          // בדוק אם יש פער בין סשנים (רק אם יש פער אמיתי)
+          if (sessionIndex < connectedSessions.length - 1) {
+            const nextSession = connectedSessions[sessionIndex + 1];
+            const gapMinutes = moment(nextSession.start_time).diff(sessionEnd, 'minutes');
+            
+            
+            // רק אם יש פער אמיתי (יותר מ-0 דקות), הוסף הפסקה בין סשנים
+            if (gapMinutes > 0) {
+              calculatedCycles.push({
+                type: 'break',
+                duration: gapMinutes,
+                hasBreak: false,
+                isSessionGap: true // סימון שזה הפסקה בין סשנים
+              });
+            }
+          }
+        });
+        
+        // חשב מחזורים חכם לסשנים מחוברים
+        
+        // חישוב מחזורים מותאם לסשנים מחוברים
+        const workDuration = settings.work_duration_minutes;
+        const breakDuration = settings.break_duration_minutes;
+        
+        // מחזור ראשון: עבודה + הפסקה (רק מהסשן הראשון)
+        const firstSessionMinutes = moment(connectedSessions[0].end_time).diff(moment(connectedSessions[0].start_time), 'minutes');
+        
+        if (firstSessionMinutes >= workDuration + breakDuration) {
+          calculatedCycles.push({
+            type: 'work',
+            duration: workDuration,
+            hasBreak: true
+          });
+          calculatedCycles.push({
+            type: 'break',
+            duration: breakDuration,
+            hasBreak: false
+          });
+          
+          // מחזור שני: הזמן הנותר מהסשן הראשון + כל הסשן השני
+          const remainingFirstSession = firstSessionMinutes - (workDuration + breakDuration);
+          const secondSessionMinutes = moment(connectedSessions[1].end_time).diff(moment(connectedSessions[1].start_time), 'minutes');
+          const combinedWorkTime = remainingFirstSession + secondSessionMinutes;
+          
+          
+          if (combinedWorkTime > 0) {
+            calculatedCycles.push({
+              type: 'work',
+              duration: combinedWorkTime,
+              hasBreak: false
+            });
+          }
+        } else {
+          // אם הסשן הראשון קצר מדי, עבודה אחת על כל הזמן
+          calculatedCycles.push({
+            type: 'work',
+            duration: totalWorkTime,
+            hasBreak: false
+          });
+        }
+        
+      } else {
+        // סשן יחיד - חישוב רגיל
+        const totalMinutes = moment(sessionEnd).diff(moment(sessionStart), 'minutes');
+        calculatedCycles = calculateCycles(
+          totalMinutes, 
+          settings.work_duration_minutes, 
+          settings.break_duration_minutes
+        );
+      }
+      
       setCycles(calculatedCycles);
       
       const now = moment();
@@ -304,12 +383,40 @@ export default function PomodoroTimerAlternative({
 
   // Get current work topic based on current time
   const getCurrentWorkTopic = () => {
-    const now = moment();
-    return workTopics.find(topic => {
-      const topicStart = moment(topic.start_time);
-      const topicEnd = moment(topic.end_time);
-      return now.isBetween(topicStart, topicEnd, null, '[]');
+    const nowUTC = moment.utc();
+    
+    // קודם נחפש נושא נוכחי (בטווח הזמן)
+    let foundTopic = workTopics.find(topic => {
+      const topicStart = moment.utc(topic.start_time);
+      const topicEnd = moment.utc(topic.end_time);
+      return nowUTC.isBetween(topicStart, topicEnd, null, '[]');
     });
+    
+    // אם לא נמצא נושא נוכחי, נחפש את הנושא הקרוב ביותר
+    if (!foundTopic && workTopics.length > 0) {
+      // מיון נושאים לפי זמן התחלה
+      const sortedTopics = workTopics.sort((a, b) => {
+        const aStart = moment.utc(a.start_time);
+        const bStart = moment.utc(b.start_time);
+        return aStart.diff(bStart);
+      });
+      
+      // מצא את הנושא הקרוב ביותר (הבא או הנוכחי)
+      foundTopic = sortedTopics.find(topic => {
+        const topicStart = moment.utc(topic.start_time);
+        
+        // אם הנושא כבר התחיל או עומד להתחיל בקרוב (בתוך שעה)
+        const timeUntilStart = topicStart.diff(nowUTC, 'minutes');
+        return timeUntilStart >= -60 && timeUntilStart <= 60; // שעה לפני או אחרי
+      });
+      
+      // אם עדיין לא נמצא, קח את הנושא הראשון
+      if (!foundTopic) {
+        foundTopic = sortedTopics[0];
+      }
+    }
+    
+    return foundTopic;
   };
 
   const currentTopic = getCurrentWorkTopic();
@@ -340,6 +447,17 @@ export default function PomodoroTimerAlternative({
     setNewTopicStart('');
     setNewTopicEnd('');
     setIsAddingTopic(false);
+  };
+
+  // Set default times when opening dialog
+  const openAddTopicDialog = () => {
+    // Set default times to session times
+    const sessionStartTime = moment(sessionStart).format('HH:mm');
+    const sessionEndTime = moment(sessionEnd).format('HH:mm');
+    
+    setNewTopicStart(sessionStartTime);
+    setNewTopicEnd(sessionEndTime);
+    setIsAddingTopic(true);
   };
 
   const handleUpdateTopic = async () => {
@@ -419,7 +537,7 @@ export default function PomodoroTimerAlternative({
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setIsAddingTopic(true)}
+                onClick={openAddTopicDialog}
                 className="h-6 w-6 text-gray-500 hover:text-gray-700"
               >
                 <Plus className="w-4 h-4" />
@@ -459,24 +577,37 @@ export default function PomodoroTimerAlternative({
 
           {/* נקודות אינדיקטור למחזורים */}
           <div className="flex justify-center items-center gap-1">
-            {cycles.map((cycle, index) => (
-              <div
-                key={index}
-                className={`transition-all duration-300 ${
-                  cycle.type === 'work' 
-                    ? 'w-3 h-1 rounded-sm' 
-                    : 'w-1 h-1 rounded-full'
-                } ${
-                  index < currentCycleIndex
-                    ? 'bg-gray-300'
-                    : index === currentCycleIndex
-                    ? cycle.type === 'work'
-                      ? 'bg-blue-500 shadow-sm animate-pulse'
-                      : 'bg-green-500 shadow-sm animate-pulse'
-                    : 'bg-gray-400 shadow-sm'
-                }`}
-              />
-            ))}
+            {cycles.map((cycle, index) => {
+              const indicatorClass = `transition-all duration-300 ${
+                cycle.type === 'work' 
+                  ? 'w-3 h-1 rounded-sm' 
+                  : cycle.isSessionGap
+                  ? 'w-2 h-1 rounded-sm border-2 border-dashed' // הפסקה בין סשנים
+                  : 'w-1 h-1 rounded-full'
+              } ${
+                index < currentCycleIndex
+                  ? cycle.isSessionGap
+                    ? 'border-gray-300 bg-transparent'
+                    : 'bg-gray-300'
+                  : index === currentCycleIndex
+                  ? cycle.type === 'work'
+                    ? 'bg-blue-500 shadow-sm animate-pulse'
+                    : cycle.isSessionGap
+                    ? 'border-orange-400 bg-transparent animate-pulse'
+                    : 'bg-green-500 shadow-sm animate-pulse'
+                  : cycle.isSessionGap
+                  ? 'border-gray-400 bg-transparent'
+                  : 'bg-gray-400 shadow-sm'
+              }`;
+              
+              
+              return (
+                <div
+                  key={index}
+                  className={indicatorClass}
+                />
+              );
+            })}
           </div>
 
           {/* Topics management dropdown */}
@@ -558,40 +689,49 @@ export default function PomodoroTimerAlternative({
         </CardContent>
       </Card>
 
-      {/* Add Topic Dialog */}
+      {/* Add Topic Dialog - Minimalist Design */}
       <Dialog open={isAddingTopic} onOpenChange={setIsAddingTopic}>
-        <DialogContent className="sm:max-w-md" dir="rtl">
+        <DialogContent className="sm:max-w-lg" dir="rtl">
           <DialogHeader>
             <DialogTitle>הוסף נושא עבודה</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
-            <select 
-              value={newTopicSubject}
-              onChange={(e) => setNewTopicSubject(e.target.value)}
-              className="w-full p-2 border rounded"
-            >
-              <option value="">בחר נושא</option>
-              {workSubjects.map(subject => (
-                <option key={subject.id} value={subject.id}>{subject.name}</option>
-              ))}
-            </select>
-            <div className="flex gap-2">
+          <div className="space-y-4">
+            {/* Single row with all inputs */}
+            <div className="flex items-center gap-3">
+              <select 
+                value={newTopicSubject}
+                onChange={(e) => setNewTopicSubject(e.target.value)}
+                className="flex-1 p-2 border rounded-md text-sm"
+              >
+                <option value="">בחר נושא</option>
+                {workSubjects.map(subject => (
+                  <option key={subject.id} value={subject.id}>{subject.name}</option>
+                ))}
+              </select>
+              
               <Input
                 type="time"
                 value={newTopicStart}
                 onChange={(e) => setNewTopicStart(e.target.value)}
-                placeholder="התחלה"
+                className="w-24 text-sm"
               />
+              
+              <span className="text-gray-400 text-sm">-</span>
+              
               <Input
                 type="time"
                 value={newTopicEnd}
                 onChange={(e) => setNewTopicEnd(e.target.value)}
-                placeholder="סיום"
+                className="w-24 text-sm"
               />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setIsAddingTopic(false)}>ביטול</Button>
-              <Button onClick={handleAddTopic}>הוסף</Button>
+              
+              <Button 
+                onClick={handleAddTopic}
+                disabled={!newTopicSubject || !newTopicStart || !newTopicEnd}
+                className="px-4 py-2"
+              >
+                הוסף
+              </Button>
             </div>
           </div>
         </DialogContent>

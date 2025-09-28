@@ -215,8 +215,45 @@ export default function Computer() {
         if (!subject) return;
 
         const dateStr = currentDate.format('YYYY-MM-DD');
-        const startDateTime = `${dateStr}T${newTopicStart}:00`;
-        const endDateTime = `${dateStr}T${newTopicEnd}:00`;
+        
+        // יצירת moment objects מקומיים
+        const startMoment = moment(`${dateStr} ${newTopicStart}`, 'YYYY-MM-DD HH:mm');
+        const endMoment = moment(`${dateStr} ${newTopicEnd}`, 'YYYY-MM-DD HH:mm');
+        
+        // המרה לISO string שישמור את הזמן המקומי כ-UTC (כדי לעקוף בעיות timezone)
+        // זה אומר שאם הקלט הוא 12:25, נשמור 12:25 כ-UTC
+        const startDateTime = moment.utc(`${dateStr} ${newTopicStart}`, 'YYYY-MM-DD HH:mm').toISOString();
+        const endDateTime = moment.utc(`${dateStr} ${newTopicEnd}`, 'YYYY-MM-DD HH:mm').toISOString();
+
+        // לוגים מפורטים לדיבוג timezone
+        console.log('🔍 === TOPIC CREATION DEBUG (FINAL) ===');
+        console.log('📅 Current Date:', currentDate.format('YYYY-MM-DD HH:mm:ss'));
+        console.log('⏰ Input Start Time:', newTopicStart);
+        console.log('⏰ Input End Time:', newTopicEnd);
+        console.log('🕐 Start DateTime to save:', startDateTime);
+        console.log('🕐 End DateTime to save:', endDateTime);
+        console.log('🌍 Timezone:', Intl.DateTimeFormat().resolvedOptions().timeZone);
+        // חישוב duration נכון ב-UTC עם טיפול בחצות
+        const startUTC = moment.utc(`${dateStr} ${newTopicStart}`, 'YYYY-MM-DD HH:mm');
+        let endUTC = moment.utc(`${dateStr} ${newTopicEnd}`, 'YYYY-MM-DD HH:mm');
+        
+        // אם זמן הסיום קטן מזמן ההתחלה, זה אומר שעברנו חצות
+        if (endUTC.isBefore(startUTC)) {
+            endUTC = endUTC.add(1, 'day');
+            console.log('🌙 Midnight crossing detected in topic creation!');
+            console.log('   Original end time:', moment.utc(`${dateStr} ${newTopicEnd}`, 'YYYY-MM-DD HH:mm').format('YYYY-MM-DD HH:mm'));
+            console.log('   Adjusted end time:', endUTC.format('YYYY-MM-DD HH:mm'));
+        }
+        
+        const durationSeconds = endUTC.diff(startUTC, 'seconds');
+        const durationMinutes = Math.round(durationSeconds / 60);
+        
+        console.log('⏱️ Duration calculation (FIXED):');
+        console.log('   Start UTC:', startUTC.format('YYYY-MM-DD HH:mm:ss'));
+        console.log('   End UTC:', endUTC.format('YYYY-MM-DD HH:mm:ss'));
+        console.log('   Duration (seconds):', durationSeconds);
+        console.log('   Duration (minutes):', durationMinutes);
+        console.log('💡 Strategy: Saving local time AS UTC to avoid timezone issues');
 
         try {
             const topicData = {
@@ -227,15 +264,20 @@ export default function Computer() {
                 subject_id: newTopicSubject,
                 subject_color: subject.color,
                 subject_icon: subject.icon,
-                duration_minutes: moment(endDateTime).diff(moment(startDateTime), 'minutes'),
+                duration_minutes: durationMinutes,
                 event_id: selectedSessionId
             };
 
+            console.log('💾 Topic Data to Save:', topicData);
             await WorkTopic.create(topicData);
             
             // Refresh topics
             const allTopics = await WorkTopic.filter({ date: dateStr });
             setWorkTopics(allTopics);
+            
+            // הודעה לדף הבית על עדכון נושאי עבודה
+            localStorage.setItem('work_topics_updated', Date.now().toString());
+            window.dispatchEvent(new CustomEvent('workTopicsUpdated'));
             
             // Reset form
             setNewTopicSubject('');
@@ -249,10 +291,25 @@ export default function Computer() {
     };
 
     const handleEditTopic = (topic) => {
+        // לוגים מפורטים לדיבוג timezone - טעינה לעריכה
+        console.log('🔍 === TOPIC EDIT LOADING DEBUG ===');
+        console.log('📋 Original Topic Object:', topic);
+        console.log('🕐 Original start_time:', topic.start_time);
+        console.log('🕐 Original end_time:', topic.end_time);
+        console.log('🌍 Moment parsing start_time:', moment(topic.start_time).format('YYYY-MM-DD HH:mm:ss'));
+        console.log('🌍 Moment parsing end_time:', moment(topic.end_time).format('YYYY-MM-DD HH:mm:ss'));
+        console.log('⏰ OLD Formatted for input start:', moment(topic.start_time).format('HH:mm'));
+        console.log('⏰ OLD Formatted for input end:', moment(topic.end_time).format('HH:mm'));
+        console.log('⏰ FIXED Formatted for input start:', moment.utc(topic.start_time).format('HH:mm'));
+        console.log('⏰ FIXED Formatted for input end:', moment.utc(topic.end_time).format('HH:mm'));
+        console.log('🌐 UTC offset:', moment().utcOffset());
+        console.log('🌐 Timezone:', Intl.DateTimeFormat().resolvedOptions().timeZone);
+
         setEditingTopic(topic);
         setNewTopicSubject(topic.subject_id);
-        setNewTopicStart(moment(topic.start_time).format('HH:mm'));
-        setNewTopicEnd(moment(topic.end_time).format('HH:mm'));
+        // תיקון: פרסור הזמן כ-UTC (זה בעצם הזמן המקומי שנשמר כUTC)
+        setNewTopicStart(moment.utc(topic.start_time).format('HH:mm'));
+        setNewTopicEnd(moment.utc(topic.end_time).format('HH:mm'));
         setSelectedSessionId(topic.event_id);
         setIsEditingTopic(true);
     };
@@ -264,8 +321,49 @@ export default function Computer() {
         if (!subject) return;
 
         const dateStr = currentDate.format('YYYY-MM-DD');
-        const startDateTime = `${dateStr}T${newTopicStart}:00`;
-        const endDateTime = `${dateStr}T${newTopicEnd}:00`;
+        
+        // יצירת moment objects מקומיים - עדכון
+        const startMoment = moment(`${dateStr} ${newTopicStart}`, 'YYYY-MM-DD HH:mm');
+        const endMoment = moment(`${dateStr} ${newTopicEnd}`, 'YYYY-MM-DD HH:mm');
+        
+        // המרה לISO string שישמור את הזמן המקומי כ-UTC (כדי לעקוף בעיות timezone)
+        const startDateTime = moment.utc(`${dateStr} ${newTopicStart}`, 'YYYY-MM-DD HH:mm').toISOString();
+        const endDateTime = moment.utc(`${dateStr} ${newTopicEnd}`, 'YYYY-MM-DD HH:mm').toISOString();
+
+        // לוגים מפורטים לדיבוג timezone - עדכון
+        console.log('🔍 === TOPIC UPDATE DEBUG (FIXED) ===');
+        console.log('📅 Current Date:', currentDate.format('YYYY-MM-DD HH:mm:ss'));
+        console.log('⏰ Input Start Time:', newTopicStart);
+        console.log('⏰ Input End Time:', newTopicEnd);
+        console.log('🕐 Start Moment Object:', startMoment.format('YYYY-MM-DD HH:mm:ss'));
+        console.log('🕐 End Moment Object:', endMoment.format('YYYY-MM-DD HH:mm:ss'));
+        console.log('🕐 Constructed Start DateTime:', startDateTime);
+        console.log('🕐 Constructed End DateTime:', endDateTime);
+        console.log('🔄 Original Topic Times:', {
+            start: editingTopic.start_time,
+            end: editingTopic.end_time,
+            startFormatted: moment(editingTopic.start_time).format('YYYY-MM-DD HH:mm:ss'),
+            endFormatted: moment(editingTopic.end_time).format('YYYY-MM-DD HH:mm:ss')
+        });
+        
+        // חישוב duration נכון ב-UTC לעדכון עם טיפול בחצות
+        const startUTC = moment.utc(`${dateStr} ${newTopicStart}`, 'YYYY-MM-DD HH:mm');
+        let endUTC = moment.utc(`${dateStr} ${newTopicEnd}`, 'YYYY-MM-DD HH:mm');
+        
+        // אם זמן הסיום קטן מזמן ההתחלה, זה אומר שעברנו חצות
+        if (endUTC.isBefore(startUTC)) {
+            endUTC = endUTC.add(1, 'day');
+            console.log('🌙 Midnight crossing detected in topic update!');
+            console.log('   Original end time:', moment.utc(`${dateStr} ${newTopicEnd}`, 'YYYY-MM-DD HH:mm').format('YYYY-MM-DD HH:mm'));
+            console.log('   Adjusted end time:', endUTC.format('YYYY-MM-DD HH:mm'));
+        }
+        
+        const durationSeconds = endUTC.diff(startUTC, 'seconds');
+        const durationMinutes = Math.round(durationSeconds / 60);
+        
+        console.log('⏱️ Update Duration calculation (FIXED):');
+        console.log('   Duration (seconds):', durationSeconds);
+        console.log('   Duration (minutes):', durationMinutes);
 
         try {
             const updatedData = {
@@ -275,14 +373,19 @@ export default function Computer() {
                 subject_id: newTopicSubject,
                 subject_color: subject.color,
                 subject_icon: subject.icon,
-                duration_minutes: moment(endDateTime).diff(moment(startDateTime), 'minutes'),
+                duration_minutes: durationMinutes,
             };
 
+            console.log('💾 Updated Topic Data to Save:', updatedData);
             await WorkTopic.update(editingTopic.id, updatedData);
             
             // Refresh topics
             const allTopics = await WorkTopic.filter({ date: dateStr });
             setWorkTopics(allTopics);
+            
+            // הודעה לדף הבית על עדכון נושאי עבודה
+            localStorage.setItem('work_topics_updated', Date.now().toString());
+            window.dispatchEvent(new CustomEvent('workTopicsUpdated'));
             
             // Reset form
             setEditingTopic(null);
@@ -304,6 +407,10 @@ export default function Computer() {
             const dateStr = currentDate.format('YYYY-MM-DD');
             const allTopics = await WorkTopic.filter({ date: dateStr });
             setWorkTopics(allTopics);
+            
+            // הודעה לדף הבית על עדכון נושאי עבודה
+            localStorage.setItem('work_topics_updated', Date.now().toString());
+            window.dispatchEvent(new CustomEvent('workTopicsUpdated'));
         } catch (error) {
             console.error('Error deleting work topic:', error);
         }
@@ -385,45 +492,6 @@ export default function Computer() {
         return iconMap[iconName] || Settings;
     };
 
-    const getDailySummary = () => {
-        const totalWorkMinutes = workSessions.reduce((sum, session) => {
-            return sum + moment(session.end_time).diff(moment(session.start_time), 'minutes');
-        }, 0);
-
-        const totalTopicsMinutes = workTopics.reduce((sum, topic) => {
-            return sum + (topic.duration_minutes || 0);
-        }, 0);
-
-        const undefinedMinutes = Math.max(0, totalWorkMinutes - totalTopicsMinutes);
-
-        const topicsSummary = {};
-        workTopics.forEach(topic => {
-            const topicName = topic.topic;
-            if (!topicsSummary[topicName]) {
-                topicsSummary[topicName] = 0;
-            }
-            topicsSummary[topicName] += topic.duration_minutes || 0;
-        });
-
-        return {
-            totalWorkMinutes,
-            totalTopicsMinutes,
-            undefinedMinutes,
-            topicsSummary
-        };
-    };
-
-    const formatMinutes = (minutes) => {
-        if (minutes < 0) return '0ד';
-        const hours = Math.floor(minutes / 60);
-        const mins = minutes % 60;
-        if (hours > 0) {
-            return `${hours}ש${mins > 0 ? ` ${mins}ד` : ''}`;
-        }
-        return `${mins}ד`;
-    };
-
-    const summary = getDailySummary();
 
     return (
         <div className="min-h-screen bg-white p-4" dir="rtl">
@@ -476,74 +544,186 @@ export default function Computer() {
 
                 {/* Main Content */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Work Sessions */}
+                    {/* Right Side - סיכום יומי + Work Sessions */}
                     <div className="space-y-6">
-                        {/* Daily Summary */}
-                        {(workSessions.length > 0 || workTopics.length > 0) && (
-                            <Card className="border-gray-100 shadow-none">
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2 text-right text-lg">
-                                        <PieChart className="w-5 h-5" />
-                                        סיכום יומי - נושאי עבודה
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-4 text-right">
-                                    {/* סך הזמן */}
-                                    <div className="space-y-2">
-                                        <div className="flex justify-between text-sm">
-                                            <span>{formatMinutes(summary.totalWorkMinutes)}</span>
-                                            <span>סך זמן עבודה מתוכנן</span>
-                                        </div>
-                                        <div className="w-full bg-gray-200 rounded-full h-2">
-                                            <div
-                                                className="bg-blue-500 h-2 rounded-full"
-                                                style={{width: `${summary.totalWorkMinutes > 0 ? (summary.totalTopicsMinutes / summary.totalWorkMinutes) * 100 : 0}%`}}
-                                            ></div>
-                                        </div>
-                                        <div className="flex justify-between text-xs text-gray-500">
-                                            <span>{formatMinutes(summary.totalTopicsMinutes)} מוגדר</span>
-                                            {summary.undefinedMinutes > 0 && (
-                                                <span className="text-orange-600">{formatMinutes(summary.undefinedMinutes)} לא מוגדר</span>
-                                            )}
-                                        </div>
-                                    </div>
+                        {/* Stats */}
+                        <Card className="border-gray-100 shadow-none">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2 text-right text-lg">
+                                    <PieChart className="w-5 h-5" />
+                                    סיכום יומי
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4 text-right">
+                                {(() => {
+                                    console.log('🔍 === DETAILED SUMMARY DEBUG ===');
+                                    
+                                    // חישוב סטטיסטיקות עם לוגים מפורטים
+                                    console.log('📊 Work Sessions:', workSessions.length);
+                                    workSessions.forEach((session, index) => {
+                                        console.log(`   Session ${index + 1}:`, session.title);
+                                        console.log(`   Start: ${session.start_time}`);
+                                        console.log(`   End: ${session.end_time}`);
+                                    });
+                                    
+                                    const totalWorkMinutes = workSessions.reduce((sum, session) => {
+                                        const startTimeUTC = moment.utc(session.start_time);
+                                        const endTimeUTC = moment.utc(session.end_time);
+                                        const durationSeconds = endTimeUTC.diff(startTimeUTC, 'seconds');
+                                        const duration = Math.round(durationSeconds / 60);
+                                        console.log(`   Duration calculation: ${durationSeconds}s = ${duration} minutes`);
+                                        return sum + duration;
+                                    }, 0);
+                                    
+                                    console.log('📊 Total Work Minutes:', totalWorkMinutes);
+                                    console.log('📊 Total Work Hours:', Math.floor(totalWorkMinutes / 60), ':', (totalWorkMinutes % 60).toString().padStart(2, '0'));
 
-                                    {/* פילוח נושאים */}
-                                    {Object.keys(summary.topicsSummary).length > 0 && (
-                                        <div className="space-y-3">
-                                            {Object.entries(summary.topicsSummary).map(([topicName, minutes]) => {
-                                                const percentage = summary.totalTopicsMinutes > 0 ? Math.round((minutes / summary.totalTopicsMinutes) * 100) : 0;
-                                                // מצא את הנושא במערך workSubjects כדי לקבל צבע ואייקון
-                                                const subjectData = workSubjects.find(s => s.name === topicName) || {};
-                                                const IconComponent = getIconComponent(subjectData.icon);
-                                                const subjectColor = subjectData.color || '#6b7280';
-                                                
-                                                return (
-                                                    <div key={topicName} className="flex items-center justify-between text-sm">
-                                                        <div className="flex items-center gap-2">
-                                                            <span>{formatMinutes(minutes)}</span>
-                                                            <span className="text-gray-500">({percentage}%)</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-2">
-                                                            <span>{topicName}</span>
-                                                            <div
-                                                                className="w-4 h-4 rounded-sm flex items-center justify-center"
-                                                                style={{ backgroundColor: `${subjectColor}20` }}
-                                                            >
-                                                                <IconComponent
-                                                                    className="w-3 h-3"
-                                                                    style={{ color: subjectColor }}
-                                                                />
+                                    console.log('📊 Work Topics:', workTopics.length);
+                                    workTopics.forEach((topic, index) => {
+                                        console.log(`   Topic ${index + 1}:`, topic.topic);
+                                        console.log(`   Duration: ${topic.duration_minutes} minutes`);
+                                        console.log(`   Start: ${topic.start_time}`);
+                                        console.log(`   End: ${topic.end_time}`);
+                                    });
+
+                                    const totalTopicsMinutes = workTopics.reduce((sum, topic) => {
+                                        let duration = topic.duration_minutes || 0;
+                                        
+                                        // תיקון נושאים עם duration שלילי (בעיית חצות)
+                                        if (duration < 0) {
+                                            console.log(`🔧 Fixing negative duration for "${topic.topic}": ${duration} minutes`);
+                                            const startUTC = moment.utc(topic.start_time);
+                                            const endUTC = moment.utc(topic.end_time);
+                                            
+                                            // אם זמן הסיום קטן מזמן ההתחלה, הוסף יום
+                                            if (endUTC.isBefore(startUTC)) {
+                                                const correctedEndUTC = endUTC.add(1, 'day');
+                                                const correctedDurationSeconds = correctedEndUTC.diff(startUTC, 'seconds');
+                                                duration = Math.round(correctedDurationSeconds / 60);
+                                                console.log(`   Corrected duration: ${duration} minutes`);
+                                            }
+                                        }
+                                        
+                                        console.log(`   Adding topic "${topic.topic}": ${duration} minutes`);
+                                        return sum + duration;
+                                    }, 0);
+                                    
+                                    console.log('📊 Total Topics Minutes:', totalTopicsMinutes);
+                                    console.log('📊 Total Topics Hours:', Math.floor(totalTopicsMinutes / 60), ':', (totalTopicsMinutes % 60).toString().padStart(2, '0'));
+
+                                    const topicsSummary = {};
+                                    workTopics.forEach(topic => {
+                                        const topicName = topic.topic;
+                                        let duration = topic.duration_minutes || 0;
+                                        
+                                        // תיקון נושאים עם duration שלילי (בעיית חצות)
+                                        if (duration < 0) {
+                                            console.log(`🔧 Fixing negative duration in summary for "${topicName}": ${duration} minutes`);
+                                            const startUTC = moment.utc(topic.start_time);
+                                            const endUTC = moment.utc(topic.end_time);
+                                            
+                                            // אם זמן הסיום קטן מזמן ההתחלה, הוסף יום
+                                            if (endUTC.isBefore(startUTC)) {
+                                                const correctedEndUTC = endUTC.add(1, 'day');
+                                                const correctedDurationSeconds = correctedEndUTC.diff(startUTC, 'seconds');
+                                                duration = Math.round(correctedDurationSeconds / 60);
+                                                console.log(`   Corrected duration in summary: ${duration} minutes`);
+                                            }
+                                        }
+                                        
+                                        console.log(`   Processing topic "${topicName}": ${duration} minutes`);
+                                        
+                                        if (!topicsSummary[topicName]) {
+                                            topicsSummary[topicName] = 0;
+                                            console.log(`   Initializing "${topicName}" to 0`);
+                                        }
+                                        topicsSummary[topicName] += duration;
+                                        console.log(`   Updated "${topicName}" to: ${topicsSummary[topicName]} minutes`);
+                                    });
+                                    
+                                    console.log('📊 Final Topics Summary:', topicsSummary);
+                                    
+                                    // חישוב אחוזים עם לוגים
+                                    Object.entries(topicsSummary).forEach(([topicName, minutes]) => {
+                                        const percentage = totalTopicsMinutes > 0 ? Math.round((minutes / totalTopicsMinutes) * 100) : 0;
+                                        const hours = Math.floor(minutes / 60);
+                                        const mins = minutes % 60;
+                                        const timeString = `${hours}:${mins.toString().padStart(2, '0')}`;
+                                        
+                                        console.log(`📊 Topic "${topicName}":`);
+                                        console.log(`   Minutes: ${minutes}`);
+                                        console.log(`   Time String: ${timeString}`);
+                                        console.log(`   Percentage: ${percentage}% (${minutes}/${totalTopicsMinutes})`);
+                                    });
+                                    
+                                    console.log('🔚 === END SUMMARY DEBUG ===');
+
+                                    return (
+                                        <>
+                                            <div className="space-y-2">
+                                                <div className="flex justify-between text-sm">
+                                                    <span>{Math.floor(totalWorkMinutes / 60)}:{(totalWorkMinutes % 60).toString().padStart(2, '0')}</span>
+                                                </div>
+                                                <div className="w-full bg-gray-200 rounded-full h-2">
+                                                    <div
+                                                        className="bg-blue-500 h-2 rounded-full"
+                                                        style={{width: `${totalWorkMinutes > 0 ? (totalTopicsMinutes / totalWorkMinutes) * 100 : 0}%`}}
+                                                    ></div>
+                                                </div>
+                                            </div>
+
+                                            {Object.keys(topicsSummary).length > 0 && (
+                                                <div className="space-y-3">
+                                                    {Object.entries(topicsSummary).map(([topicName, minutes]) => {
+                                                        console.log(`🎨 === RENDERING TOPIC "${topicName}" ===`);
+                                                        console.log(`   Raw minutes: ${minutes}`);
+                                                        console.log(`   Total topics minutes: ${totalTopicsMinutes}`);
+                                                        
+                                                        const percentage = totalTopicsMinutes > 0 ? Math.round((minutes / totalTopicsMinutes) * 100) : 0;
+                                                        console.log(`   Calculated percentage: ${percentage}%`);
+                                                        
+                                                        const hours = Math.floor(minutes / 60);
+                                                        const mins = minutes % 60;
+                                                        const timeString = `${hours}:${mins.toString().padStart(2, '0')}`;
+                                                        console.log(`   Time string: ${timeString} (${hours}h ${mins}m)`);
+                                                        
+                                                        const subjectData = workSubjects.find(s => s.name === topicName) || {};
+                                                        console.log(`   Subject data:`, subjectData);
+                                                        
+                                                        const IconComponent = getIconComponent(subjectData.icon);
+                                                        const subjectColor = subjectData.color || '#6b7280';
+                                                        console.log(`   Icon: ${subjectData.icon}, Color: ${subjectColor}`);
+                                                        
+                                                        console.log(`🎨 === END RENDERING TOPIC "${topicName}" ===`);
+                                                        
+                                                        return (
+                                                            <div key={topicName} className="flex items-center justify-between text-sm">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span>{timeString}</span>
+                                                                    <span className="text-gray-500">({percentage}%)</span>
+                                                                </div>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span>{topicName}</span>
+                                                                    <div
+                                                                        className="w-4 h-4 rounded-sm flex items-center justify-center"
+                                                                        style={{ backgroundColor: `${subjectColor}20` }}
+                                                                    >
+                                                                        <IconComponent
+                                                                            className="w-3 h-3"
+                                                                            style={{ color: subjectColor }}
+                                                                        />
+                                                                    </div>
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        )}
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </>
+                                    );
+                                })()}
+                            </CardContent>
+                        </Card>
 
                         {/* Work Sessions */}
                         {workSessions.length > 0 ? (
@@ -559,9 +739,36 @@ export default function Computer() {
                                                         <div>
                                                             <CardTitle className="text-lg">{session.title}</CardTitle>
                                                             <p className="text-sm text-gray-500 font-mono mt-1">
-                                                                {moment(session.start_time).format('HH:mm')} - {moment(session.end_time).format('HH:mm')}
+                                                                {(() => {
+                                                                    const displayStart = moment(session.start_time).format('HH:mm');
+                                                                    const displayEnd = moment(session.end_time).format('HH:mm');
+                                                                    console.log('🔍 === TIME DISPLAY DEBUG ===');
+                                                                    console.log('📅 Session:', session.title);
+                                                                    console.log('⏰ Displaying as:', `${displayStart} - ${displayEnd}`);
+                                                                    return `${displayStart} - ${displayEnd}`;
+                                                                })()}
                                                                 <span className="mr-2">
-                                                                    ({moment(session.end_time).diff(moment(session.start_time), 'minutes')} דקות)
+                                                                    ({(() => {
+                                                                        console.log('🔍 === INDIVIDUAL SESSION DISPLAY DEBUG (FIXED) ===');
+                                                                        console.log('📅 Session:', session.title);
+                                                                        console.log('🕐 RAW start_time:', session.start_time);
+                                                                        console.log('🕐 RAW end_time:', session.end_time);
+                                                                        
+                                                                        // חישוב נכון על בסיס UTC עם עיגול
+                                                                        const startTimeUTC = moment.utc(session.start_time);
+                                                                        const endTimeUTC = moment.utc(session.end_time);
+                                                                        
+                                                                        const durationSeconds = endTimeUTC.diff(startTimeUTC, 'seconds');
+                                                                        const duration = Math.round(durationSeconds / 60);
+                                                                        
+                                                                        console.log('🌍 UTC start:', startTimeUTC.format('YYYY-MM-DD HH:mm:ss'));
+                                                                        console.log('🌍 UTC end:', endTimeUTC.format('YYYY-MM-DD HH:mm:ss'));
+                                                                        console.log('📊 CORRECT UTC diff (seconds):', durationSeconds);
+                                                                        console.log('📊 CORRECT UTC diff (minutes, raw):', durationSeconds / 60);
+                                                                        console.log('📊 CORRECT UTC diff (minutes, rounded):', duration);
+                                                                        
+                                                                        return duration;
+                                                                    })()} דקות)
                                                                 </span>
                                                             </p>
                                                         </div>
@@ -570,6 +777,19 @@ export default function Computer() {
                                                             size="icon"
                                                             onClick={() => {
                                                                 setSelectedSessionId(session.id);
+                                                                
+                                                                // ברירות מחדל חכמות - זמני הסשן (טיפול ב-timezone)
+                                                                const sessionStart = moment.utc(session.start_time).local().format('HH:mm');
+                                                                const sessionEnd = moment.utc(session.end_time).local().format('HH:mm');
+                                                                setNewTopicStart(sessionStart);
+                                                                setNewTopicEnd(sessionEnd);
+                                                                
+                                                                console.log('🔍 === SMART DEFAULTS ===');
+                                                                console.log('📅 Session:', session.title);
+                                                                console.log('⏰ Session Start:', sessionStart);
+                                                                console.log('⏰ Session End:', sessionEnd);
+                                                                console.log('🎯 Setting as defaults for new topic');
+                                                                
                                                                 setIsAddingTopic(true);
                                                             }}
                                                             className="h-8 w-8"
@@ -589,7 +809,20 @@ export default function Computer() {
                                                                             <div className="flex items-center justify-between">
                                                                                 <span className="font-medium">{topic.topic}</span>
                                                                                 <span className="text-sm text-gray-500 font-mono">
-                                                                                    {moment(topic.start_time).format('HH:mm')} - {moment(topic.end_time).format('HH:mm')}
+                                                                                    {(() => {
+                                                                                        // תיקון: פרסור הזמן כ-UTC (זה בעצם הזמן המקומי שנשמר כUTC)
+                                                                                        const startFormatted = moment.utc(topic.start_time).format('HH:mm');
+                                                                                        const endFormatted = moment.utc(topic.end_time).format('HH:mm');
+                                                                                        console.log('🔍 === DISPLAY TIME DEBUG (FINAL FIX) ===');
+                                                                                        console.log('📋 Topic:', topic.topic);
+                                                                                        console.log('🕐 Raw start_time:', topic.start_time);
+                                                                                        console.log('🕐 Raw end_time:', topic.end_time);
+                                                                                        console.log('🌍 UTC start parsed:', moment.utc(topic.start_time).format('YYYY-MM-DD HH:mm:ss'));
+                                                                                        console.log('🌍 UTC end parsed:', moment.utc(topic.end_time).format('YYYY-MM-DD HH:mm:ss'));
+                                                                                        console.log('⏰ Final formatted start:', startFormatted);
+                                                                                        console.log('⏰ Final formatted end:', endFormatted);
+                                                                                        return `${startFormatted} - ${endFormatted}`;
+                                                                                    })()}
                                                                                 </span>
                                                                             </div>
                                                                         </div>
@@ -637,7 +870,7 @@ export default function Computer() {
                         )}
                     </div>
 
-                    {/* Sidebar - Notes */}
+                    {/* Left Side - הערות יומיות + הערות קבועות */}
                     <div className="space-y-6">
                         {/* Daily Notes */}
                         <Card className="border-gray-100 shadow-none">
@@ -667,7 +900,7 @@ export default function Computer() {
                                         saveDailyNotes();
                                     }}
                                     placeholder="הערות יומיות..."
-                                    className="resize-none border-gray-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300 text-sm h-32"
+                                    className="resize-none border-gray-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300 text-sm h-48"
                                 />
                             </CardContent>
                         </Card>
@@ -699,7 +932,7 @@ export default function Computer() {
                 </div>
             </div>
 
-            {/* Add/Edit Topic Dialog */}
+            {/* Add/Edit Topic Dialog - Minimalist */}
             <Dialog open={isAddingTopic || isEditingTopic} onOpenChange={() => {
                 setIsAddingTopic(false);
                 setIsEditingTopic(false);
@@ -709,48 +942,50 @@ export default function Computer() {
                 setNewTopicEnd('');
                 setSelectedSessionId(null);
             }}>
-                <DialogContent className="sm:max-w-md" dir="rtl">
+                <DialogContent className="sm:max-w-lg" dir="rtl">
                     <DialogHeader>
-                        <DialogTitle>{isEditingTopic ? 'ערוך נושא עבודה' : 'הוסף נושא עבודה'}</DialogTitle>
+                        <DialogTitle className="text-center text-lg">{isEditingTopic ? 'ערוך נושא עבודה' : 'הוסף נושא עבודה'}</DialogTitle>
                     </DialogHeader>
-                    <div className="space-y-3">
-                        <select 
-                            value={newTopicSubject}
-                            onChange={(e) => setNewTopicSubject(e.target.value)}
-                            className="w-full p-2 border rounded text-right"
-                        >
-                            <option value="">בחר נושא</option>
-                            {workSubjects.map(subject => (
-                                <option key={subject.id} value={subject.id}>{subject.name}</option>
-                            ))}
-                        </select>
-                        <div className="flex gap-2">
+                    <div className="py-4">
+                        {/* Single row with all controls */}
+                        <div className="flex items-center gap-3">
+                            {/* Subject Select */}
+                            <select 
+                                value={newTopicSubject}
+                                onChange={(e) => setNewTopicSubject(e.target.value)}
+                                className="flex-1 p-2 border rounded text-right bg-white"
+                            >
+                                <option value="">בחר נושא</option>
+                                {workSubjects.map(subject => (
+                                    <option key={subject.id} value={subject.id}>{subject.name}</option>
+                                ))}
+                            </select>
+                            
+                            {/* Start Time */}
                             <Input
                                 type="time"
                                 value={newTopicStart}
                                 onChange={(e) => setNewTopicStart(e.target.value)}
-                                placeholder="התחלה"
+                                className="w-24 text-center"
                             />
+                            
+                            {/* Separator */}
+                            <span className="text-gray-400">—</span>
+                            
+                            {/* End Time */}
                             <Input
                                 type="time"
                                 value={newTopicEnd}
                                 onChange={(e) => setNewTopicEnd(e.target.value)}
-                                placeholder="סיום"
+                                className="w-24 text-center"
                             />
-                        </div>
-                        <div className="flex justify-end gap-2">
-                            <Button variant="outline" onClick={() => {
-                                setIsAddingTopic(false);
-                                setIsEditingTopic(false);
-                                setEditingTopic(null);
-                                setNewTopicSubject('');
-                                setNewTopicStart('');
-                                setNewTopicEnd('');
-                                setSelectedSessionId(null);
-                            }}>ביטול</Button>
+                            
+                            {/* Action Button */}
                             <Button 
                                 onClick={isEditingTopic ? handleUpdateTopic : handleAddTopic}
                                 disabled={!newTopicSubject || !newTopicStart || !newTopicEnd}
+                                size="sm"
+                                className="px-4"
                             >
                                 {isEditingTopic ? 'עדכן' : 'הוסף'}
                             </Button>
