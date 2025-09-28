@@ -128,48 +128,55 @@ const playTestSound = (soundId) => {
 
         switch(soundId) {
             case 'gentle_bell':
-                createSound(523.25, 2.0);
-                createSound(659.25, 1.8);
-                createSound(783.99, 1.5);
+                // פעמון עדין - צליל גבוה ונעים
+                createSound(523.25, 1.5);
+                setTimeout(() => createSound(659.25, 1.2), 200);
+                setTimeout(() => createSound(783.99, 1.0), 400);
                 break;
             case 'deep_gong':
-                createSound(98, 3.0, 'sine');
-                setTimeout(() => createSound(196, 2.5, 'sine'), 200);
-                setTimeout(() => createSound(294, 2.0, 'sine'), 400);
+                // גונג עמוק - צליל נמוך ועמוק
+                createSound(65, 2.5, 'sine');
+                setTimeout(() => createSound(98, 2.0, 'sine'), 300);
+                setTimeout(() => createSound(131, 1.5, 'sine'), 600);
                 break;
             case 'crystal_tone':
-                createSound(1047, 1.0, 'triangle');
-                setTimeout(() => createSound(1397, 0.8, 'triangle'), 300);
-                setTimeout(() => createSound(1865, 0.6, 'triangle'), 600);
+                // טון קריסטל - צליל גבוה וצלול
+                createSound(1047, 0.8, 'triangle');
+                setTimeout(() => createSound(1397, 0.6, 'triangle'), 200);
+                setTimeout(() => createSound(1865, 0.4, 'triangle'), 400);
                 break;
             case 'soft_chime':
-                createSound(440, 1.5, 'triangle');
-                setTimeout(() => createSound(554, 1.2, 'triangle'), 400);
+                // פעמון רך - צליל בינוני ורך
+                createSound(440, 1.2, 'triangle');
+                setTimeout(() => createSound(554, 1.0, 'triangle'), 300);
                 break;
             case 'nature_bird':
-                const freq1 = 800;
+                // צפור טבעית - צליל משתנה כמו צפור
+                const freq1 = 1200;
                 const oscillator1 = audioContext.createOscillator();
                 const gain1 = audioContext.createGain();
                 oscillator1.connect(gain1);
                 gain1.connect(audioContext.destination);
                 oscillator1.frequency.setValueAtTime(freq1, audioContext.currentTime);
-                oscillator1.frequency.exponentialRampToValueAtTime(freq1 * 1.5, audioContext.currentTime + 0.3);
-                oscillator1.frequency.exponentialRampToValueAtTime(freq1 * 0.8, audioContext.currentTime + 0.6);
+                oscillator1.frequency.exponentialRampToValueAtTime(freq1 * 1.8, audioContext.currentTime + 0.2);
+                oscillator1.frequency.exponentialRampToValueAtTime(freq1 * 0.6, audioContext.currentTime + 0.5);
+                oscillator1.frequency.exponentialRampToValueAtTime(freq1 * 1.2, audioContext.currentTime + 0.8);
                 oscillator1.type = 'sine';
-                gain1.gain.setValueAtTime(0.15, audioContext.currentTime);
-                gain1.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 1.2);
+                gain1.gain.setValueAtTime(0.12, audioContext.currentTime);
+                gain1.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 1.0);
                 oscillator1.start(audioContext.currentTime);
-                oscillator1.stop(audioContext.currentTime + 1.2);
+                oscillator1.stop(audioContext.currentTime + 1.0);
                 break;
             case 'meditation_bowl':
-                const freq2 = 174;
+                // קערת מדיטציה - צליל עמוק עם רטט
+                const freq2 = 256;
                 const oscillator2 = audioContext.createOscillator();
                 const gain2 = audioContext.createGain();
                 const lfo = audioContext.createOscillator();
                 const lfoGain = audioContext.createGain();
                 
-                lfo.frequency.setValueAtTime(4, audioContext.currentTime);
-                lfoGain.gain.setValueAtTime(10, audioContext.currentTime);
+                lfo.frequency.setValueAtTime(6, audioContext.currentTime);
+                lfoGain.gain.setValueAtTime(15, audioContext.currentTime);
                 lfo.connect(lfoGain);
                 lfoGain.connect(oscillator2.frequency);
                 
@@ -178,35 +185,40 @@ const playTestSound = (soundId) => {
                 gain2.connect(audioContext.destination);
                 oscillator2.type = 'sine';
                 
-                gain2.gain.setValueAtTime(0.15, audioContext.currentTime);
-                gain2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 2.5);
+                gain2.gain.setValueAtTime(0.18, audioContext.currentTime);
+                gain2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 3.0);
                 
                 lfo.start(audioContext.currentTime);
                 oscillator2.start(audioContext.currentTime);
-                lfo.stop(audioContext.currentTime + 2.5);
-                oscillator2.stop(audioContext.currentTime + 2.5);
+                lfo.stop(audioContext.currentTime + 3.0);
+                oscillator2.stop(audioContext.currentTime + 3.0);
                 break;
             case 'wind_harmony':
-                createSound(330, 2.0, 'sine');
-                setTimeout(() => createSound(415, 1.8, 'sine'), 200);
-                setTimeout(() => createSound(495, 1.6, 'sine'), 400);
-                setTimeout(() => createSound(660, 1.4, 'sine'), 600);
+                // הרמוניית רוח - צליל נמוך ומתמשך
+                createSound(220, 1.8, 'sine');
+                setTimeout(() => createSound(277, 1.6, 'sine'), 300);
+                setTimeout(() => createSound(330, 1.4, 'sine'), 600);
+                setTimeout(() => createSound(440, 1.2, 'sine'), 900);
                 break;
             case 'water_drop':
-                createSound(1200, 0.1, 'sine', false);
-                setTimeout(() => createSound(800, 0.15, 'sine', false), 150);
-                setTimeout(() => createSound(600, 0.2, 'sine'), 350);
+                // טיפת מים - צליל קצר וחד
+                createSound(1600, 0.05, 'sine', false);
+                setTimeout(() => createSound(1200, 0.08, 'sine', false), 100);
+                setTimeout(() => createSound(800, 0.1, 'sine', false), 200);
+                setTimeout(() => createSound(400, 0.15, 'sine'), 350);
                 break;
             case 'bamboo_knock':
-                createSound(180, 0.2, 'square', false);
-                setTimeout(() => createSound(160, 0.2, 'square', false), 250);
-                setTimeout(() => createSound(140, 0.3, 'square'), 500);
+                // דפיקת במבוק - צליל עמוק וקצר
+                createSound(120, 0.15, 'square', false);
+                setTimeout(() => createSound(100, 0.15, 'square', false), 200);
+                setTimeout(() => createSound(80, 0.2, 'square'), 400);
                 break;
             case 'temple_peace':
-                createSound(174, 3.0);
-                setTimeout(() => createSound(220, 2.8), 300);
-                setTimeout(() => createSound(261, 2.5), 600);
-                setTimeout(() => createSound(174 * 2, 2.0), 900);
+                // שלווה במקדש - צליל עמוק ושליו
+                createSound(110, 2.5);
+                setTimeout(() => createSound(138, 2.2), 400);
+                setTimeout(() => createSound(165, 1.8), 800);
+                setTimeout(() => createSound(220, 1.5), 1200);
                 break;
             default:
                 createSound(440, 1.0);

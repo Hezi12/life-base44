@@ -55,23 +55,27 @@ const playPomodoroSound = (soundId) => {
 
         switch(soundId) {
             case 'gentle_bell':
-                createSound(523.25, 2.0);
-                createSound(659.25, 1.8);
-                createSound(783.99, 1.5);
+                // פעמון עדין - צליל גבוה ונעים
+                createSound(523.25, 1.5);
+                setTimeout(() => createSound(659.25, 1.2), 200);
+                setTimeout(() => createSound(783.99, 1.0), 400);
                 break;
             case 'deep_gong':
-                createSound(98, 3.0, 'sine');
-                setTimeout(() => createSound(196, 2.5, 'sine'), 200);
-                setTimeout(() => createSound(294, 2.0, 'sine'), 400);
+                // גונג עמוק - צליל נמוך ועמוק
+                createSound(65, 2.5, 'sine');
+                setTimeout(() => createSound(98, 2.0, 'sine'), 300);
+                setTimeout(() => createSound(131, 1.5, 'sine'), 600);
                 break;
             case 'crystal_tone':
-                createSound(1047, 1.0, 'triangle');
-                setTimeout(() => createSound(1397, 0.8, 'triangle'), 300);
-                setTimeout(() => createSound(1865, 0.6, 'triangle'), 600);
+                // טון קריסטל - צליל גבוה וצלול
+                createSound(1047, 0.8, 'triangle');
+                setTimeout(() => createSound(1397, 0.6, 'triangle'), 200);
+                setTimeout(() => createSound(1865, 0.4, 'triangle'), 400);
                 break;
             case 'soft_chime':
-                createSound(440, 1.5, 'triangle');
-                setTimeout(() => createSound(554, 1.2, 'triangle'), 400);
+                // פעמון רך - צליל בינוני ורך
+                createSound(440, 1.2, 'triangle');
+                setTimeout(() => createSound(554, 1.0, 'triangle'), 300);
                 break;
             case 'nature_bird':
                 const freq1 = 800;
