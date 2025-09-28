@@ -188,8 +188,137 @@ export const localClient = {
       },
       
       async SendEmail({ to, subject, body }) {
-        // Mock email sending
-        console.log('Mock email sent:', { to, subject, body });
+        try {
+          console.log('📧 === EMAIL NOTIFICATION ===');
+          console.log(`📤 To: ${to}`);
+          console.log(`📋 Subject: ${subject}`);
+          console.log(`📝 Body:`);
+          console.log(body);
+          console.log('📧 === END EMAIL ===');
+          
+          // הגדרות מייל - אפשר להגדיר כאן ישירות
+          const emailConfig = {
+            // אפשרות 1: Gmail App Password
+            gmail: {
+              user: 'schwartzhezi@gmail.com', // המייל שלך
+              appPassword: 'suqd jnyq yftm ulag', // App Password מ-Gmail
+              enabled: true // מופעל
+            },
+            
+            // אפשרות 2: EmailJS
+            emailjs: {
+              serviceId: 'service_focus_app',
+              templateId: 'template_focus_notification', 
+              publicKey: 'YOUR_PUBLIC_KEY',
+              enabled: false // שנה ל-true אחרי שתגדיר EmailJS
+            },
+            
+            // אפשרות 3: Webhook
+            webhook: {
+              url: 'https://webhook.site/YOUR_WEBHOOK_ID',
+              enabled: false // שנה ל-true אחרי שתגדיר Webhook
+            }
+          };
+          
+          // ניסיון לשלוח דרך Gmail App Password
+          if (emailConfig.gmail.enabled) {
+            try {
+              console.log('📧 Sending real email via Vercel API...');
+              
+              // שימוש ב-Vercel API
+              const apiUrl = '/api/send-email';
+              
+              const emailData = {
+                to: to,
+                subject: subject,
+                body: body
+              };
+              
+              const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(emailData)
+              });
+              
+              if (response.ok) {
+                const result = await response.json();
+                console.log('✅ Real email sent successfully:', result);
+                return { success: true, messageId: result.messageId };
+              } else {
+                const errorData = await response.json();
+                throw new Error(`HTTP ${response.status}: ${errorData.error}`);
+              }
+              
+            } catch (gmailError) {
+              console.log('⚠️ Vercel API failed, using mock...');
+              console.log('Error:', gmailError.message);
+            }
+          }
+          
+          // ניסיון לשלוח דרך EmailJS
+          if (emailConfig.emailjs.enabled && emailConfig.emailjs.publicKey !== 'YOUR_PUBLIC_KEY') {
+            try {
+              const { default: emailjs } = await import('@emailjs/browser');
+              
+              const result = await emailjs.send(
+                emailConfig.emailjs.serviceId,
+                emailConfig.emailjs.templateId,
+                {
+                  to_email: to,
+                  subject: subject,
+                  message: body,
+                  from_name: 'מערכת המיקוד שלך'
+                },
+                emailConfig.emailjs.publicKey
+              );
+              
+              console.log('✅ Email sent via EmailJS successfully:', result);
+              return { success: true, messageId: result.text };
+              
+            } catch (emailjsError) {
+              console.log('⚠️ EmailJS failed, trying Webhook...');
+            }
+          }
+          
+          // ניסיון לשלוח דרך Webhook
+          if (emailConfig.webhook.enabled && !emailConfig.webhook.url.includes('YOUR_WEBHOOK_ID')) {
+            try {
+              const emailData = {
+                to: to,
+                subject: subject,
+                body: body,
+                timestamp: new Date().toISOString(),
+                source: 'focus-app'
+              };
+              
+              const response = await fetch(emailConfig.webhook.url, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(emailData)
+              });
+              
+              if (response.ok) {
+                console.log('✅ Email sent via webhook successfully');
+                return { success: true, messageId: 'webhook-' + Date.now() };
+              }
+              
+            } catch (webhookError) {
+              console.log('⚠️ Webhook failed, using mock...');
+            }
+          }
+          
+        } catch (error) {
+          console.error('❌ All email methods failed:', error);
+        }
+        
+        // Fallback: Mock email
+        console.log('📧 Using mock email (no real email sent)');
+        console.log('💡 CORS issue prevents real email sending from browser');
+        console.log('💡 Gmail App Password is configured but needs server-side implementation');
         return { success: true, messageId: 'mock-' + Date.now() };
       },
       

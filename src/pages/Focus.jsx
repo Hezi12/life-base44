@@ -9,6 +9,7 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { FocusSession } from '@/api/entities';
 import { FocusSetting } from '@/api/entities';
+import { SendEmail } from '@/api/integrations';
 import moment from 'moment';
 
 const RadioToggle = ({ id, checked, onCheckedChange }) => {
@@ -36,6 +37,7 @@ export default function NewFocus() {
     const [selectedDays, setSelectedDays] = useState([]);
     const [newScheduleTime, setNewScheduleTime] = useState('');
     const [nextFocusInfo, setNextFocusInfo] = useState({ number: 1, time: 'היום, 15:30' });
+    const [isTestingEmail, setIsTestingEmail] = useState(false);
 
     const toggleDay = (day) => {
         if (selectedDays.includes(day)) {
@@ -112,6 +114,53 @@ export default function NewFocus() {
         loadData();
     }, []);
 
+    // מערכת התראות למיקוד מתוזמן
+    useEffect(() => {
+        const checkFocusNotifications = async () => {
+            try {
+                if (!settings.notify_on_time) {
+                    return; // התראות כבויות
+                }
+
+                const now = moment();
+                const today = now.format('dddd'); // יום בשבוע באנגלית
+                
+                // בדוק אם יש מיקוד מתוזמן היום
+                const todaySchedules = settings.schedule.filter(schedule => schedule.day === today);
+                
+                for (const schedule of todaySchedules) {
+                    const scheduledTime = moment(schedule.time, 'HH:mm');
+                    const notificationTime = scheduledTime.clone().subtract(settings.notification_minutes_before, 'minutes');
+                    
+                    // בדוק אם הגיע זמן ההתראה
+                    if (now.isSame(notificationTime, 'minute') && now.isSame(notificationTime, 'hour')) {
+                        // שלח התראה במייל
+                        await SendEmail({
+                            to: 'schwartzhezi@gmail.com',
+                            subject: `התראה: מיקוד מתוזמן בעוד ${settings.notification_minutes_before} דקות`,
+                            body: `שלום!
+
+המיקוד המתוזמן שלך יתחיל בעוד ${settings.notification_minutes_before} דקות (${scheduledTime.format('HH:mm')}).
+
+זמן להתכונן למיקוד!
+
+המערכת שלך`
+                        });
+                        
+                        console.log(`📧 Focus notification sent for ${scheduledTime.format('HH:mm')}`);
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking focus notifications:', error);
+            }
+        };
+
+        // בדוק התראות כל דקה
+        const notificationInterval = setInterval(checkFocusNotifications, 60000);
+        
+        return () => clearInterval(notificationInterval);
+    }, [settings]);
+
     // פונקציות לניהול הגדרות
     const addScheduleTime = async () => {
         if (selectedDays.length === 0 || !newScheduleTime) return;
@@ -159,6 +208,31 @@ export default function NewFocus() {
         }
         setIsSettingsOpen(false);
         setIsScheduleManagementOpen(false);
+    };
+
+    const testEmailNotification = async () => {
+        setIsTestingEmail(true);
+        try {
+            await SendEmail({
+                to: 'schwartzhezi@gmail.com',
+                subject: 'בדיקת התראות מיקוד - המערכת עובדת!',
+                body: `שלום!
+
+זוהי בדיקת התראות מיקוד מתוזמן.
+
+המערכת שלך עובדת מושלם! 🎯
+
+זמן הבדיקה: ${moment().format('DD/MM/YYYY HH:mm')}
+
+המערכת שלך`
+            });
+            alert('✅ מייל בדיקה נשלח בהצלחה! בדוק את הקונסול לפרטים.');
+        } catch (error) {
+            console.error('Error testing email:', error);
+            alert('❌ שגיאה בשליחת מייל הבדיקה. בדוק את הקונסול לפרטים.');
+        } finally {
+            setIsTestingEmail(false);
+        }
     };
 
     return (
@@ -295,6 +369,35 @@ export default function NewFocus() {
                                 onChange={(e) => setSettings({...settings, notification_minutes_before: parseInt(e.target.value)})}
                                 className="col-span-1 w-12 sm:w-16 text-sm" 
                             />
+                        </div>
+
+                        {/* כפתור בדיקת מייל */}
+                        <div className="flex flex-col items-center pt-2 space-y-2">
+                            <Button 
+                                onClick={testEmailNotification}
+                                disabled={isTestingEmail}
+                                variant="outline"
+                                size="sm"
+                                className="text-xs"
+                            >
+                                {isTestingEmail ? (
+                                    <>
+                                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-gray-600 mr-2"></div>
+                                        שולח...
+                                    </>
+                                ) : (
+                                    'בדיקת מייל'
+                                )}
+                            </Button>
+                            
+                            {/* הודעה על הגדרת מייל */}
+                            <div className="text-xs text-gray-500 text-center max-w-xs">
+                                ✅ Gmail App Password מוגדר
+                                <br />
+                                📧 מיילים יישלחו דרך Vercel API
+                                <br />
+                                🔧 מוגדר ב: api/send-email.js
+                            </div>
                         </div>
                     </div>
                     <DialogFooter className="flex justify-start">

@@ -9,7 +9,8 @@ import { WorkTopic } from "@/api/entities";
 import { WorkSubject } from "@/api/entities";
 import { DailyNotes } from "@/api/entities";
 import { StickyNotes } from "@/api/entities";
-import { InvokeLLM } from '@/api/integrations';
+import { InvokeLLM, SendEmail } from '@/api/integrations';
+import { FocusSetting } from '@/api/entities';
 import PomodoroTimerAlternative from '../components/dashboard/PomodoroTimerAlternative';
 import moment from "moment";
 
@@ -301,6 +302,56 @@ export default function Dashboard() {
 
         return () => clearInterval(interval);
     }, [loadTodayEvents, isLoadingData]); // Depend on loadTodayEvents and isLoadingData
+
+    // מערכת התראות למיקוד מתוזמן
+    useEffect(() => {
+        const checkFocusNotifications = async () => {
+            try {
+                // טען הגדרות מיקוד
+                const focusSettings = await FocusSetting.list();
+                if (focusSettings.length === 0 || !focusSettings[0].notify_on_time) {
+                    return; // אין הגדרות או התראות כבויות
+                }
+
+                const settings = focusSettings[0];
+                const now = moment();
+                const today = now.format('dddd'); // יום בשבוע באנגלית
+                
+                // בדוק אם יש מיקוד מתוזמן היום
+                const todaySchedules = settings.schedule.filter(schedule => schedule.day === today);
+                
+                for (const schedule of todaySchedules) {
+                    const scheduledTime = moment(schedule.time, 'HH:mm');
+                    const notificationTime = scheduledTime.clone().subtract(settings.notification_minutes_before, 'minutes');
+                    
+                    // בדוק אם הגיע זמן ההתראה
+                    if (now.isSame(notificationTime, 'minute') && now.isSame(notificationTime, 'hour')) {
+                        // שלח התראה במייל
+                        await SendEmail({
+                            to: 'schwartzhezi@gmail.com',
+                            subject: `התראה: מיקוד מתוזמן בעוד ${settings.notification_minutes_before} דקות`,
+                            body: `שלום!
+
+המיקוד המתוזמן שלך יתחיל בעוד ${settings.notification_minutes_before} דקות (${scheduledTime.format('HH:mm')}).
+
+זמן להתכונן למיקוד!
+
+המערכת שלך`
+                        });
+                        
+                        console.log(`📧 Focus notification sent for ${scheduledTime.format('HH:mm')}`);
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking focus notifications:', error);
+            }
+        };
+
+        // בדוק התראות כל דקה
+        const notificationInterval = setInterval(checkFocusNotifications, 60000);
+        
+        return () => clearInterval(notificationInterval);
+    }, []);
 
     // Save notes when leaving the page - only if there's a computer session
     useEffect(() => {
