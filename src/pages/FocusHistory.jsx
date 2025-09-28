@@ -238,8 +238,9 @@ ${importText}`;
                         session_number: session.session_number,
                         start_time: startDateTime,
                         end_time: startDateTime, // נעדכן מאוחר יותר אם צריך
-                        content: session.content.trim(),
+                        notes: session.content.trim(), // תיקון: content -> notes כדי להתאים לסכמת המסד
                         next_session_suggestion: nextSessionDateTime,
+                        status: 'completed' // ברירת מחדל
                     };
                     
                     console.log(`✅ מיקוד ${index + 1} עובד בהצלחה:`, processedSession);
