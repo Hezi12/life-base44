@@ -453,18 +453,8 @@ export default function Dashboard() {
         <div className="min-h-screen bg-white p-4" dir="rtl">
             <div className="max-w-7xl mx-auto">
                 {isMobile ? (
-                    /* Mobile Mode - Only Pomodoro Timer */
-                    <div className="flex flex-col items-center justify-center h-[calc(100vh-50px)]">
-                        <PomodoroTimerAlternative
-                            sessionStart={currentComputerSession.start_time}
-                            sessionEnd={currentComputerSession.end_time}
-                            workTopics={workTopics}
-                            workSubjects={workSubjects}
-                            onAddTopic={addWorkTopic}
-                            onUpdateTopic={updateWorkTopic}
-                            onDeleteTopic={deleteWorkTopic}
-                            connectedSessions={currentComputerSession.connected_sessions}
-                        />
+                    /* Mobile Mode - Empty page during computer session */
+                    <div className="min-h-screen bg-white" dir="rtl">
                     </div>
                 ) : (
                     /* Desktop Mode - Full Layout */
