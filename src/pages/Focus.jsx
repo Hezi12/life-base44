@@ -390,14 +390,6 @@ export default function NewFocus() {
                                 )}
                             </Button>
                             
-                            {/* הודעה על הגדרת מייל */}
-                            <div className="text-xs text-gray-500 text-center max-w-xs">
-                                ✅ Gmail App Password מוגדר
-                                <br />
-                                📧 מיילים יישלחו דרך Vercel API
-                                <br />
-                                🔧 מוגדר ב: api/send-email.js
-                            </div>
                         </div>
                     </div>
                     <DialogFooter className="flex justify-start">
