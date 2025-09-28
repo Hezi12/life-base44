@@ -211,9 +211,10 @@ ${importText}`;
                     const [day, month, year] = session.date.split('/');
                     const dateStr = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
                     
-                    // יצירת זמן התחלה מקומי
-                    const startDateTime = `${dateStr}T${session.time}:00`;
-                    console.log(`⏰ זמן התחלה: ${startDateTime}`);
+                    // יצירת זמן התחלה - המרה מזמן ישראלי ל-UTC
+                    const israeliDateTime = `${dateStr}T${session.time}:00`;
+                    const startDateTime = moment(israeliDateTime).utcOffset('+03:00').utc().toISOString();
+                    console.log(`⏰ זמן התחלה (ישראלי -> UTC): ${israeliDateTime} -> ${startDateTime}`);
                     
                     // יצירת זמן מיקוד הבא אם קיים
                     let nextSessionDateTime = null;
@@ -222,16 +223,18 @@ ${importText}`;
                         const sessionTimeMinutes = parseInt(session.time.split(':')[0]) * 60 + parseInt(session.time.split(':')[1]);
                         const nextTimeMinutes = parseInt(nextTime.split(':')[0]) * 60 + parseInt(nextTime.split(':')[1]);
                         
+                        let nextDateForSession = dateStr;
                         // אם הזמן הבא קטן מהזמן הנוכחי, זה כנראה ביום הבא
                         if (nextTimeMinutes <= sessionTimeMinutes) {
                             const nextDay = new Date(dateStr);
                             nextDay.setDate(nextDay.getDate() + 1);
-                            const nextDateStr = nextDay.toISOString().split('T')[0];
-                            nextSessionDateTime = `${nextDateStr}T${nextTime}:00`;
-                        } else {
-                            nextSessionDateTime = `${dateStr}T${nextTime}:00`;
+                            nextDateForSession = nextDay.toISOString().split('T')[0];
                         }
-                        console.log(`⏭️ זמן המיקוד הבא: ${nextSessionDateTime}`);
+                        
+                        // המרה מזמן ישראלי ל-UTC גם למיקוד הבא
+                        const israeliNextDateTime = `${nextDateForSession}T${nextTime}:00`;
+                        nextSessionDateTime = moment(israeliNextDateTime).utcOffset('+03:00').utc().toISOString();
+                        console.log(`⏭️ זמן המיקוד הבא (ישראלי -> UTC): ${israeliNextDateTime} -> ${nextSessionDateTime}`);
                     }
 
                     const processedSession = {
