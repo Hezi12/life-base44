@@ -549,6 +549,7 @@ export default function Schedule() {
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isQuickInputOpen, setIsQuickInputOpen] = useState(false);
     const [isUploadingImage, setIsUploadingImage] = useState(false);
+    const [isImageViewOpen, setIsImageViewOpen] = useState(false);
 
     const loadInitialData = useCallback(async () => {
         try {
@@ -886,24 +887,39 @@ export default function Schedule() {
                         <Card className="border-gray-100 shadow-none">
                             <CardContent className="p-4">
                                 {dailyImage ? (
-                                    <div className="space-y-2 text-right">
-                                        <div className="relative">
+                                    <div className="space-y-3 text-right">
+                                        <div className="relative group">
                                             <img
                                                 src={dailyImage.image_url}
                                                 alt="תמונה יומית"
-                                                className="w-full h-32 sm:h-40 object-cover rounded-lg"
+                                                className="w-full h-auto max-h-80 object-contain rounded-lg bg-gray-50 shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer"
+                                                style={{ 
+                                                    maxWidth: '100%',
+                                                    height: 'auto',
+                                                    display: 'block',
+                                                    margin: '0 auto'
+                                                }}
+                                                onClick={() => setIsImageViewOpen(true)}
                                             />
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
                                                 onClick={handleDeleteImage}
-                                                className="absolute top-2 left-2 h-6 w-6 bg-black/50 hover:bg-black/70 text-white rounded-full"
+                                                className="absolute top-2 left-2 h-7 w-7 bg-black/60 hover:bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"
                                             >
-                                                <Trash2 className="w-3 h-3" />
+                                                <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => setIsImageViewOpen(true)}
+                                                className="absolute top-2 right-2 h-7 w-7 bg-black/60 hover:bg-blue-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                                            >
+                                                <Eye className="w-4 h-4" />
                                             </Button>
                                         </div>
                                         {dailyImage.caption && (
-                                            <p className="text-xs sm:text-sm text-gray-600">{dailyImage.caption}</p>
+                                            <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">{dailyImage.caption}</p>
                                         )}
                                     </div>
                                 ) : (
@@ -918,14 +934,22 @@ export default function Schedule() {
                                         />
                                         <label
                                             htmlFor="image-upload"
-                                            className={`cursor-pointer flex flex-col items-center p-6 sm:p-8 border-2 border-dashed rounded-lg ${
-                                                isUploadingImage ? 'border-gray-300 text-gray-400' : 'border-gray-200 hover:border-gray-300'
+                                            className={`cursor-pointer flex flex-col items-center p-6 sm:p-8 border-2 border-dashed rounded-lg transition-colors duration-200 ${
+                                                isUploadingImage 
+                                                    ? 'border-gray-300 text-gray-400 bg-gray-50' 
+                                                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                                             }`}
                                         >
                                             {isUploadingImage ? (
-                                                <RefreshCw className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400 animate-spin" />
+                                                <>
+                                                    <RefreshCw className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400 animate-spin mb-2" />
+                                                    <span className="text-sm text-gray-500">מעלה תמונה...</span>
+                                                </>
                                             ) : (
-                                                <Upload className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400" />
+                                                <>
+                                                    <Upload className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400 mb-2" />
+                                                    <span className="text-sm text-gray-500">לחץ להעלאת תמונה</span>
+                                                </>
                                             )}
                                         </label>
                                     </div>
@@ -1006,6 +1030,53 @@ export default function Schedule() {
                 onClose={() => setIsSettingsOpen(false)}
                 onCategoriesChange={loadInitialData}
             />
+
+            {/* Image View Modal */}
+            <Dialog open={isImageViewOpen} onOpenChange={setIsImageViewOpen}>
+                <DialogContent className="max-w-4xl max-h-[90vh] p-0">
+                    <DialogHeader className="p-6 pb-0">
+                        <DialogTitle className="text-right">תמונה יומית - {currentDate.format('DD/MM/YYYY')}</DialogTitle>
+                    </DialogHeader>
+                    <div className="p-6 pt-0">
+                        {dailyImage && (
+                            <div className="text-center">
+                                <img
+                                    src={dailyImage.image_url}
+                                    alt="תמונה יומית"
+                                    className="max-w-full max-h-[70vh] object-contain rounded-lg mx-auto"
+                                    style={{ 
+                                        maxWidth: '100%',
+                                        height: 'auto',
+                                        display: 'block'
+                                    }}
+                                />
+                                {dailyImage.caption && (
+                                    <p className="text-sm text-gray-600 mt-4 text-right leading-relaxed">{dailyImage.caption}</p>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                    <DialogFooter className="p-6 pt-0">
+                        <Button 
+                            variant="outline" 
+                            onClick={() => setIsImageViewOpen(false)}
+                            className="mr-auto"
+                        >
+                            סגור
+                        </Button>
+                        <Button 
+                            variant="destructive" 
+                            onClick={() => {
+                                handleDeleteImage();
+                                setIsImageViewOpen(false);
+                            }}
+                        >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            מחק תמונה
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
