@@ -11,7 +11,23 @@ import moment from 'moment';
 // פונקציה ליצירת צלצולי פומודורו
 const playPomodoroSound = (soundId) => {
     try {
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        // בדיקה אם AudioContext זמין
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) {
+            console.log('AudioContext not supported');
+            return;
+        }
+        
+        const audioContext = new AudioContext();
+        
+        // אם AudioContext מושעה, נסה להפעיל אותו
+        if (audioContext.state === 'suspended') {
+            audioContext.resume().then(() => {
+                console.log('AudioContext resumed');
+            }).catch(err => {
+                console.log('Failed to resume AudioContext:', err);
+            });
+        }
         
         const createSound = (freq, duration, waveType = 'sine', fadeOut = true) => {
             const oscillator = audioContext.createOscillator();

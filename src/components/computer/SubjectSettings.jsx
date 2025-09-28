@@ -84,7 +84,23 @@ const SOUND_OPTIONS = [
 // פונקציה ליצירת צלצולים
 const playTestSound = (soundId) => {
     try {
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        // בדיקה אם AudioContext זמין
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) {
+            console.log('AudioContext not supported');
+            return;
+        }
+        
+        const audioContext = new AudioContext();
+        
+        // אם AudioContext מושעה, נסה להפעיל אותו
+        if (audioContext.state === 'suspended') {
+            audioContext.resume().then(() => {
+                console.log('AudioContext resumed');
+            }).catch(err => {
+                console.log('Failed to resume AudioContext:', err);
+            });
+        }
         
         const createSound = (freq, duration, waveType = 'sine', fadeOut = true) => {
             const oscillator = audioContext.createOscillator();
@@ -129,6 +145,68 @@ const playTestSound = (soundId) => {
             case 'soft_chime':
                 createSound(440, 1.5, 'triangle');
                 setTimeout(() => createSound(554, 1.2, 'triangle'), 400);
+                break;
+            case 'nature_bird':
+                const freq1 = 800;
+                const oscillator1 = audioContext.createOscillator();
+                const gain1 = audioContext.createGain();
+                oscillator1.connect(gain1);
+                gain1.connect(audioContext.destination);
+                oscillator1.frequency.setValueAtTime(freq1, audioContext.currentTime);
+                oscillator1.frequency.exponentialRampToValueAtTime(freq1 * 1.5, audioContext.currentTime + 0.3);
+                oscillator1.frequency.exponentialRampToValueAtTime(freq1 * 0.8, audioContext.currentTime + 0.6);
+                oscillator1.type = 'sine';
+                gain1.gain.setValueAtTime(0.15, audioContext.currentTime);
+                gain1.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 1.2);
+                oscillator1.start(audioContext.currentTime);
+                oscillator1.stop(audioContext.currentTime + 1.2);
+                break;
+            case 'meditation_bowl':
+                const freq2 = 174;
+                const oscillator2 = audioContext.createOscillator();
+                const gain2 = audioContext.createGain();
+                const lfo = audioContext.createOscillator();
+                const lfoGain = audioContext.createGain();
+                
+                lfo.frequency.setValueAtTime(4, audioContext.currentTime);
+                lfoGain.gain.setValueAtTime(10, audioContext.currentTime);
+                lfo.connect(lfoGain);
+                lfoGain.connect(oscillator2.frequency);
+                
+                oscillator2.frequency.setValueAtTime(freq2, audioContext.currentTime);
+                oscillator2.connect(gain2);
+                gain2.connect(audioContext.destination);
+                oscillator2.type = 'sine';
+                
+                gain2.gain.setValueAtTime(0.15, audioContext.currentTime);
+                gain2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 2.5);
+                
+                lfo.start(audioContext.currentTime);
+                oscillator2.start(audioContext.currentTime);
+                lfo.stop(audioContext.currentTime + 2.5);
+                oscillator2.stop(audioContext.currentTime + 2.5);
+                break;
+            case 'wind_harmony':
+                createSound(330, 2.0, 'sine');
+                setTimeout(() => createSound(415, 1.8, 'sine'), 200);
+                setTimeout(() => createSound(495, 1.6, 'sine'), 400);
+                setTimeout(() => createSound(660, 1.4, 'sine'), 600);
+                break;
+            case 'water_drop':
+                createSound(1200, 0.1, 'sine', false);
+                setTimeout(() => createSound(800, 0.15, 'sine', false), 150);
+                setTimeout(() => createSound(600, 0.2, 'sine'), 350);
+                break;
+            case 'bamboo_knock':
+                createSound(180, 0.2, 'square', false);
+                setTimeout(() => createSound(160, 0.2, 'square', false), 250);
+                setTimeout(() => createSound(140, 0.3, 'square'), 500);
+                break;
+            case 'temple_peace':
+                createSound(174, 3.0);
+                setTimeout(() => createSound(220, 2.8), 300);
+                setTimeout(() => createSound(261, 2.5), 600);
+                setTimeout(() => createSound(174 * 2, 2.0), 900);
                 break;
             default:
                 createSound(440, 1.0);
@@ -613,23 +691,51 @@ export default function SubjectSettings({ isOpen, onClose, onSubjectsChange }) {
                                 </div>
 
                                 {pomodoroSettings.sound_enabled && (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <SoundSelector
-                                            label="צלצול לסיום עבודה"
-                                            value={pomodoroSettings.work_end_sound}
-                                            onChange={(sound) => setPomodoroSettings({
-                                                ...pomodoroSettings,
-                                                work_end_sound: sound
-                                            })}
-                                        />
-                                        <SoundSelector
-                                            label="צלצול לסיום הפסקה"
-                                            value={pomodoroSettings.break_end_sound}
-                                            onChange={(sound) => setPomodoroSettings({
-                                                ...pomodoroSettings,
-                                                break_end_sound: sound
-                                            })}
-                                        />
+                                    <div className="space-y-4">
+                                        <div className="flex justify-center">
+                                            <Button
+                                                onClick={() => {
+                                                    playTestSound(pomodoroSettings.work_end_sound);
+                                                }}
+                                                variant="outline"
+                                                size="sm"
+                                                className="text-xs"
+                                            >
+                                                🔔 בדיקת צליל עבודה
+                                            </Button>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <SoundSelector
+                                                label="צלצול לסיום עבודה"
+                                                value={pomodoroSettings.work_end_sound}
+                                                onChange={(sound) => setPomodoroSettings({
+                                                    ...pomodoroSettings,
+                                                    work_end_sound: sound
+                                                })}
+                                            />
+                                            <SoundSelector
+                                                label="צלצול לסיום הפסקה"
+                                                value={pomodoroSettings.break_end_sound}
+                                                onChange={(sound) => setPomodoroSettings({
+                                                    ...pomodoroSettings,
+                                                    break_end_sound: sound
+                                                })}
+                                            />
+                                        </div>
+                                        
+                                        <div className="flex justify-center">
+                                            <Button
+                                                onClick={() => {
+                                                    playTestSound(pomodoroSettings.break_end_sound);
+                                                }}
+                                                variant="outline"
+                                                size="sm"
+                                                className="text-xs"
+                                            >
+                                                🔔 בדיקת צליל הפסקה
+                                            </Button>
+                                        </div>
                                     </div>
                                 )}
                             </div>
