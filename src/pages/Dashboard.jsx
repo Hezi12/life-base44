@@ -3,8 +3,13 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { Edit3, Pin } from "lucide-react";
+import { 
+    Edit3, Pin, Clock, Briefcase, Monitor, Utensils, BedDouble, 
+    Dumbbell, BookOpen, Users, Heart, ShoppingBag, Car, 
+    Stethoscope, Palette, Shield, Tv, Music, Plane, Gamepad2 
+} from "lucide-react";
 import { Event } from "@/api/entities";
+import { Category } from "@/api/entities";
 import { WorkTopic } from "@/api/entities";
 import { WorkSubject } from "@/api/entities";
 import { DailyNotes } from "@/api/entities";
@@ -21,12 +26,79 @@ moment.updateLocale('he', {
     weekdaysShort: ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳']
 });
 
+// רכיב EventTile לדף הבית - עיצוב אריחים
+const EventTile = ({ event, isCurrent }) => {
+    // פונקציה לקבלת אייקון לפי שם הקטגוריה
+    const getIconComponent = (categoryName) => {
+        const iconMap = {
+            'עבודה': Briefcase,
+            'מחשב': Monitor,
+            'אוכל': Utensils,
+            'שינה': BedDouble,
+            'ספורט': Dumbbell,
+            'לימודים': BookOpen,
+            'משפחה': Users,
+            'חברים': Heart,
+            'קניות': ShoppingBag,
+            'נסיעה': Car,
+            'בריאות': Stethoscope,
+            'תחביבים': Palette,
+            'דת': Shield,
+            'בידור': Tv,
+            'מוזיקה': Music,
+            'טיול': Plane,
+            'משחקים': Gamepad2
+        };
+        
+        return iconMap[categoryName] || Clock;
+    };
+
+    const IconComponent = getIconComponent(event.category);
+    const iconColor = event.category_color || '#6b7280';
+    const bgColor = event.category_color ? `${event.category_color}10` : '#f8fafc';
+
+    return (
+        <div className={`p-3 rounded-lg border transition-all duration-200 ${
+            isCurrent 
+                ? 'bg-blue-50 border-blue-200 shadow-sm' 
+                : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+        }`}>
+            <div className="flex items-center gap-3">
+                {/* אייקון */}
+                <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center"
+                    style={{ backgroundColor: bgColor }}
+                >
+                    <IconComponent
+                        className="w-4 h-4"
+                        style={{ color: iconColor }}
+                    />
+                </div>
+
+                {/* תוכן האירוע */}
+                <div className="flex-1">
+                    <h4 className={`font-medium text-sm ${isCurrent ? 'text-blue-800' : 'text-gray-800'}`}>
+                        {event.title}
+                    </h4>
+                    <p className="text-xs text-gray-500 mt-0.5 font-mono">
+                        {moment(event.start_time).format('HH:mm')}
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 export default function Dashboard() {
     const isMobile = useIsMobile();
     const [isLoading, setIsLoading] = useState(true);
     
     // Computer session states (for special mode)
     const [currentComputerSession, setCurrentComputerSession] = useState(null);
+    
+    // Mobile events states
+    const [mobileEvents, setMobileEvents] = useState([]);
+    const [currentEvent, setCurrentEvent] = useState(null);
     const [workTopics, setWorkTopics] = useState([]);
     const [workSubjects, setWorkSubjects] = useState([]);
     const [dailyNotes, setDailyNotes] = useState('');
@@ -267,6 +339,62 @@ export default function Dashboard() {
         loadTodayEvents();
     }, [loadTodayEvents]); // Depend on loadTodayEvents useCallback to get latest version
 
+    // טעינת אירועים למובייל
+    useEffect(() => {
+        const loadMobileEvents = async () => {
+            try {
+                const dateStr = moment().format('YYYY-MM-DD');
+                const todayEvents = await Event.filter({ date: dateStr });
+                
+                // טען קטגוריות כדי לקבל צבעים ואייקונים
+                const categories = await Category.list();
+                
+                // הוסף מידע קטגוריה לכל אירוע
+                const eventsWithCategories = todayEvents.map(event => {
+                    const category = categories.find(cat => cat.name === event.category);
+                    return {
+                        ...event,
+                        category_color: category?.color || '#6b7280',
+                        category_icon: category?.icon || 'Clock'
+                    };
+                });
+                
+                const now = moment();
+                
+                // מצא את האירוע הנוכחי
+                const current = eventsWithCategories.find(event => {
+                    const eventStart = moment(event.start_time);
+                    const eventEnd = moment(event.end_time);
+                    return now.isBetween(eventStart, eventEnd);
+                });
+                
+                setCurrentEvent(current);
+                
+                // קח את האירוע הנוכחי + 4 אירועים הבאים
+                const sortedEvents = eventsWithCategories.sort((a, b) => moment(a.start_time).diff(moment(b.start_time)));
+                const currentIndex = current ? sortedEvents.findIndex(e => e.id === current.id) : -1;
+                
+                let eventsToShow = [];
+                if (currentIndex >= 0) {
+                    // התחל מהאירוע הנוכחי
+                    eventsToShow = sortedEvents.slice(currentIndex, currentIndex + 5);
+                } else {
+                    // אם אין אירוע נוכחי, קח את 4 האירועים הבאים
+                    const futureEvents = sortedEvents.filter(event => moment(event.start_time).isAfter(now));
+                    eventsToShow = futureEvents.slice(0, 4);
+                }
+                
+                setMobileEvents(eventsToShow);
+            } catch (error) {
+                console.error('Error loading mobile events:', error);
+            }
+        };
+
+        if (isMobile) {
+            loadMobileEvents();
+        }
+    }, [isMobile]);
+
     // Listen for work topics changes from Computer page
     useEffect(() => {
         const handleStorageChange = (e) => {
@@ -453,8 +581,50 @@ export default function Dashboard() {
         <div className="min-h-screen bg-white p-4" dir="rtl">
             <div className="max-w-7xl mx-auto">
                 {isMobile ? (
-                    /* Mobile Mode - Empty page during computer session */
-                    <div className="min-h-screen bg-white" dir="rtl">
+                    /* Mobile Mode - Show events and sticky notes */
+                    <div className="min-h-screen bg-white p-4" dir="rtl">
+                        <div className="max-w-md mx-auto space-y-4">
+                            {/* Events */}
+                            <Card className="border-gray-100 shadow-none">
+                                <CardContent className="pt-6">
+                                    {mobileEvents.length > 0 ? (
+                                        <div className="space-y-3">
+                                            {mobileEvents.map((event, index) => (
+                                                <EventTile
+                                                    key={event.id}
+                                                    event={event}
+                                                    isCurrent={currentEvent && event.id === currentEvent.id}
+                                                />
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-8">
+                                            <Clock className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                                            <p className="text-gray-500 text-sm">אין אירועים מתוכננים היום</p>
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+
+                            {/* Sticky Notes */}
+                            <Card className="border-gray-100 shadow-none">
+                                <CardHeader className="pb-2 px-4 pt-3 flex-shrink-0">
+                                    <div className="flex justify-center">
+                                        <Pin className="w-4 h-4 text-gray-600" />
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="px-4 pb-4 pt-1 flex-1 min-h-0 flex flex-col">
+                                    <Textarea
+                                        value={stickyNotes}
+                                        onChange={(e) => setStickyNotes(e.target.value)}
+                                        onBlur={() => saveStickyNotes(stickyNotes)}
+                                        placeholder="הערות קבועות..."
+                                        className="flex-1 resize-none border-gray-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300 text-sm"
+                                        style={{ minHeight: '200px' }}
+                                    />
+                                </CardContent>
+                            </Card>
+                        </div>
                     </div>
                 ) : (
                     /* Desktop Mode - Full Layout */

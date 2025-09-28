@@ -3,12 +3,13 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Target, Calendar, Monitor, RotateCcw, MessageCircle, Palette, Menu, X, Home, Plus, Focus } from "lucide-react";
+import { Target, Calendar, Monitor, RotateCcw, MessageCircle, Palette, Menu, X, Home, Plus, Focus, Clock } from "lucide-react";
 import QuickScheduleInput from '../components/schedule/QuickScheduleInput';
 import { Category } from "@/api/entities";
 import { Event } from "@/api/entities";
 import { WorkTopic } from "@/api/entities";
 import { User } from "@/api/entities"; // Import User entity
+import { FocusSession, FocusSetting } from "@/api/entities";
 import moment from "moment";
 
 const navigationItems = [
@@ -81,6 +82,7 @@ export default function Layout({ children, currentPageName }) {
   const [isQuickScheduleOpen, setIsQuickScheduleOpen] = useState(false);
   const [categories, setCategories] = useState([]);
   const [currentDate, setCurrentDate] = useState(moment());
+  const [nextFocusTime, setNextFocusTime] = useState('');
   const location = useLocation();
 
   useEffect(() => {
@@ -93,6 +95,47 @@ export default function Layout({ children, currentPageName }) {
       }
     };
     loadCategories();
+  }, []);
+
+  // טעינת זמן המיקוד הבא
+  useEffect(() => {
+    const loadNextFocusTime = async () => {
+      try {
+        // טען את המיקוד האחרון
+        const lastSession = await FocusSession.list('-session_number', 1);
+        
+        if (lastSession.length > 0 && lastSession[0].next_session_suggestion) {
+          const nextTime = moment(lastSession[0].next_session_suggestion);
+          const now = moment();
+          
+          // אם הזמן הבא הוא היום, הצג רק שעה
+          if (nextTime.isSame(now, 'day')) {
+            setNextFocusTime(nextTime.format('HH:mm'));
+          } else {
+            // אם זה יום אחר, הצג תאריך ושעה
+            setNextFocusTime(nextTime.format('DD/MM HH:mm'));
+          }
+        } else {
+          // ברירת מחדל - 3 שעות קדימה מעוגל ל-5 דקות
+          const defaultTime = moment().add(3, 'hours');
+          const minutes = defaultTime.minutes();
+          const roundedMinutes = Math.ceil(minutes / 5) * 5;
+          const roundedTime = defaultTime.minutes(roundedMinutes);
+          
+          if (roundedTime.isSame(moment(), 'day')) {
+            setNextFocusTime(roundedTime.format('HH:mm'));
+          } else {
+            setNextFocusTime(roundedTime.format('DD/MM HH:mm'));
+          }
+        }
+      } catch (error) {
+        console.error('Error loading next focus time:', error);
+        // ברירת מחדל פשוטה
+        setNextFocusTime('15:30');
+      }
+    };
+
+    loadNextFocusTime();
   }, []);
 
   const handleAddEvents = async (eventsData) => {
@@ -311,21 +354,58 @@ export default function Layout({ children, currentPageName }) {
 
       {/* Mobile Menu */}
       <div className="md:hidden">
-        {!isHomePage && (
-          <Link 
-            to={createPageUrl("Dashboard")}
-            className="fixed top-4 left-4 z-30 p-2 bg-gray-100 rounded-full shadow-sm hover:bg-gray-200 transition-colors"
-          >
-            <Home className="w-5 h-5 text-gray-700" />
-          </Link>
-        )}
+        {/* Mobile Toolbar */}
+        <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-200 shadow-lg">
+          <div className="flex items-center justify-between px-4 py-2">
+            {/* Left side - Navigation */}
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => setIsMobileMenuOpen(true)}
+                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                title="תפריט"
+              >
+                <Menu className="w-5 h-5 text-gray-700" />
+              </button>
 
-        <button 
-          onClick={() => setIsMobileMenuOpen(true)}
-          className="fixed bottom-20 right-4 z-30 p-3 bg-gray-100 rounded-full shadow-lg"
-        >
-          <Menu className="w-6 h-6 text-gray-700" />
-        </button>
+              {!isHomePage && (
+                <Link 
+                  to={createPageUrl("Dashboard")}
+                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                  title="דף הבית"
+                >
+                  <Home className="w-5 h-5 text-gray-700" />
+                </Link>
+              )}
+            </div>
+
+            {/* Right side - Quick actions */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setIsQuickScheduleOpen(true)}
+                className="p-2 rounded-lg hover:bg-green-50 transition-colors"
+                title="תכנון מהיר"
+              >
+                <Calendar className="w-5 h-5 text-green-600" />
+              </button>
+
+              {/* Focus button with time */}
+              <div className="flex items-center gap-2">
+                <Link
+                  to={createPageUrl("ActiveFocusSession")}
+                  className="p-2 rounded-lg hover:bg-blue-50 transition-colors"
+                  title="מיקוד"
+                >
+                  <Target className="w-5 h-5 text-blue-600" />
+                </Link>
+                
+                {/* Next focus time - minimal design */}
+                <div className="text-xs text-gray-500 font-mono">
+                  {nextFocusTime}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <div 
           className={`fixed inset-0 z-40 transition-opacity duration-300 ${isMobileMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
@@ -363,7 +443,7 @@ export default function Layout({ children, currentPageName }) {
             <div className="mt-auto pt-6 border-t border-gray-200">
               <button
                 onClick={handleLogout}
-                className="flex items-center gap-4 p-3 rounded-xl text-lg font-medium text-gray-700 hover:bg-gray-200/60 transition-colors w-full"
+                className="flex items-center justify-center p-3 rounded-xl text-lg font-medium text-gray-700 hover:bg-gray-200/60 transition-colors w-full"
               >
                 <svg 
                   width="24" 
@@ -380,7 +460,6 @@ export default function Layout({ children, currentPageName }) {
                   <polyline points="16,17 21,12 16,7"/>
                   <line x1="21" y1="12" x2="9" y2="12"/>
                 </svg>
-                <span>יציאה מהחשבון</span>
               </button>
             </div>
           </div>
@@ -388,7 +467,7 @@ export default function Layout({ children, currentPageName }) {
       </div>
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto md:pr-20">
+      <main className="flex-1 overflow-auto md:pr-20 pb-16 md:pb-0">
         {children}
       </main>
 
