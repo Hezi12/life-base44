@@ -1,0 +1,21 @@
+{
+  "name": "Life Base44 - מערכת ניהול חיים",
+  "short_name": "Life Base44",
+  "description": "מערכת ניהול חיים אישית - מיקוד, לוח זמנים, הרגלים ועוד",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
+  "orientation": "portrait",
+  "scope": "/",
+  "lang": "he",
+  "dir": "rtl",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
