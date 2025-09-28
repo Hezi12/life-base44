@@ -691,51 +691,23 @@ export default function SubjectSettings({ isOpen, onClose, onSubjectsChange }) {
                                 </div>
 
                                 {pomodoroSettings.sound_enabled && (
-                                    <div className="space-y-4">
-                                        <div className="flex justify-center">
-                                            <Button
-                                                onClick={() => {
-                                                    playTestSound(pomodoroSettings.work_end_sound);
-                                                }}
-                                                variant="outline"
-                                                size="sm"
-                                                className="text-xs"
-                                            >
-                                                🔔 בדיקת צליל עבודה
-                                            </Button>
-                                        </div>
-                                        
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <SoundSelector
-                                                label="צלצול לסיום עבודה"
-                                                value={pomodoroSettings.work_end_sound}
-                                                onChange={(sound) => setPomodoroSettings({
-                                                    ...pomodoroSettings,
-                                                    work_end_sound: sound
-                                                })}
-                                            />
-                                            <SoundSelector
-                                                label="צלצול לסיום הפסקה"
-                                                value={pomodoroSettings.break_end_sound}
-                                                onChange={(sound) => setPomodoroSettings({
-                                                    ...pomodoroSettings,
-                                                    break_end_sound: sound
-                                                })}
-                                            />
-                                        </div>
-                                        
-                                        <div className="flex justify-center">
-                                            <Button
-                                                onClick={() => {
-                                                    playTestSound(pomodoroSettings.break_end_sound);
-                                                }}
-                                                variant="outline"
-                                                size="sm"
-                                                className="text-xs"
-                                            >
-                                                🔔 בדיקת צליל הפסקה
-                                            </Button>
-                                        </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <SoundSelector
+                                            label="צלצול לסיום עבודה"
+                                            value={pomodoroSettings.work_end_sound}
+                                            onChange={(sound) => setPomodoroSettings({
+                                                ...pomodoroSettings,
+                                                work_end_sound: sound
+                                            })}
+                                        />
+                                        <SoundSelector
+                                            label="צלצול לסיום הפסקה"
+                                            value={pomodoroSettings.break_end_sound}
+                                            onChange={(sound) => setPomodoroSettings({
+                                                ...pomodoroSettings,
+                                                break_end_sound: sound
+                                            })}
+                                        />
                                     </div>
                                 )}
                             </div>
