@@ -9,7 +9,7 @@ function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // בדיקה אם יש משתני Supabase
+  // בדיקה אם יש משתני Supabase - trigger Vercel deployment
   const useSupabase = import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY;
 
   useEffect(() => {
