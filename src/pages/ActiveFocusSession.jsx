@@ -122,10 +122,9 @@ export default function NewActiveFocusSession() {
                 start_time: sessionStart.toISOString(),
                 end_time: now.toISOString(),
                 duration_minutes: durationMinutes,
-                content: content,
-                ai_summary: aiSummary,
-                ai_affirmation: aiAffirmation,
+                notes: content,
                 next_session_suggestion: nextSessionTime ? new Date(nextSessionTime).toISOString() : null,
+                status: 'completed'
             };
 
             await FocusSession.create(sessionData);

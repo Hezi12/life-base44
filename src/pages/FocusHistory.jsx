@@ -45,7 +45,7 @@ export default function FocusHistory() {
         // מיפוי חזרה מ-notes ל-content כדי שהתצוגה תעבוד
         const mappedData = data.map(session => ({
             ...session,
-            content: session.notes || session.content // תמיכה בשני השדות
+            content: session.notes || session.content || '' // תמיכה בשני השדות עם ברירת מחדל
         }));
         console.log('✅ מיפוי הושלם, מיקודים עם תוכן:', mappedData.filter(s => s.content).length);
         setSessions(mappedData);
