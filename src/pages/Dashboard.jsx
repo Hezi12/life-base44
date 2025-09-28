@@ -12,6 +12,7 @@ import { StickyNotes } from "@/api/entities";
 import { InvokeLLM, SendEmail } from '@/api/integrations';
 import { FocusSetting } from '@/api/entities';
 import PomodoroTimerAlternative from '../components/dashboard/PomodoroTimerAlternative';
+import { useIsMobile } from '@/hooks/use-mobile';
 import moment from "moment";
 
 // הגדרת moment לעברית
@@ -21,6 +22,7 @@ moment.updateLocale('he', {
 });
 
 export default function Dashboard() {
+    const isMobile = useIsMobile();
     const [isLoading, setIsLoading] = useState(true);
     
     // Computer session states (for special mode)
@@ -450,73 +452,89 @@ export default function Dashboard() {
     return (
         <div className="min-h-screen bg-white p-4" dir="rtl">
             <div className="max-w-7xl mx-auto">
-                {/* Computer Session Mode */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-50px)]">
-                    {/* Daily Notes Column */}
-                    <div className="flex flex-col h-full min-h-0">
-                        <Card className="border-gray-100 shadow-none flex-1 min-h-0 flex flex-col">
-                            <CardHeader className="pb-2 px-4 pt-3 flex-shrink-0">
-                                <div className="flex justify-between items-center">
-                                    <Edit3 className="w-4 h-4 text-gray-600" />
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={handleGetMentorFeedback}
-                                        disabled={isLoadingAI}
-                                        className="text-xs h-6 px-2"
-                                    >
-                                        {isLoadingAI ? "טוען..." : "שאל מנטור AI"}
-                                    </Button>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="px-4 pb-4 pt-0 flex-1 min-h-0 flex flex-col">
-                                <Textarea
-                                    value={dailyNotes}
-                                    onChange={(e) => setDailyNotes(e.target.value)}
-                                    onBlur={() => saveDailyNotes(dailyNotes)}
-                                    placeholder="הערות יומיות..."
-                                    className="flex-1 resize-none border-gray-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300 text-sm min-h-0"
-                                />
-                            </CardContent>
-                        </Card>
+                {isMobile ? (
+                    /* Mobile Mode - Only Pomodoro Timer */
+                    <div className="flex flex-col items-center justify-center h-[calc(100vh-50px)]">
+                        <PomodoroTimerAlternative
+                            sessionStart={currentComputerSession.start_time}
+                            sessionEnd={currentComputerSession.end_time}
+                            workTopics={workTopics}
+                            workSubjects={workSubjects}
+                            onAddTopic={addWorkTopic}
+                            onUpdateTopic={updateWorkTopic}
+                            onDeleteTopic={deleteWorkTopic}
+                            connectedSessions={currentComputerSession.connected_sessions}
+                        />
                     </div>
-
-                    {/* Pomodoro & Sticky Notes Column */}
-                    <div className="flex flex-col gap-4 h-full">
-                        {/* Pomodoro Timer */}
-                        <div className="flex justify-center py-2">
-                            <PomodoroTimerAlternative
-                                sessionStart={currentComputerSession.start_time}
-                                sessionEnd={currentComputerSession.end_time}
-                                workTopics={workTopics}
-                                workSubjects={workSubjects}
-                                onAddTopic={addWorkTopic}
-                                onUpdateTopic={updateWorkTopic}
-                                onDeleteTopic={deleteWorkTopic}
-                                connectedSessions={currentComputerSession.connected_sessions}
-                            />
+                ) : (
+                    /* Desktop Mode - Full Layout */
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-50px)]">
+                        {/* Daily Notes Column */}
+                        <div className="flex flex-col h-full min-h-0">
+                            <Card className="border-gray-100 shadow-none flex-1 min-h-0 flex flex-col">
+                                <CardHeader className="pb-2 px-4 pt-3 flex-shrink-0">
+                                    <div className="flex justify-between items-center">
+                                        <Edit3 className="w-4 h-4 text-gray-600" />
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={handleGetMentorFeedback}
+                                            disabled={isLoadingAI}
+                                            className="text-xs h-6 px-2"
+                                        >
+                                            {isLoadingAI ? "טוען..." : "שאל מנטור AI"}
+                                        </Button>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="px-4 pb-4 pt-0 flex-1 min-h-0 flex flex-col">
+                                    <Textarea
+                                        value={dailyNotes}
+                                        onChange={(e) => setDailyNotes(e.target.value)}
+                                        onBlur={() => saveDailyNotes(dailyNotes)}
+                                        placeholder="הערות יומיות..."
+                                        className="flex-1 resize-none border-gray-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300 text-sm min-h-0"
+                                    />
+                                </CardContent>
+                            </Card>
                         </div>
 
-                        {/* Sticky Notes */}
-                        <Card className="border-gray-100 shadow-none flex-1 min-h-0">
-                            <CardHeader className="pb-1 px-4 pt-2 flex-shrink-0">
-                                <div className="flex justify-center">
-                                    <Pin className="w-4 h-4 text-gray-600" />
-                                </div>
-                            </CardHeader>
-                            <CardContent className="px-4 pb-4 pt-1 flex-1 min-h-0 flex flex-col">
-                                <Textarea
-                                    value={stickyNotes}
-                                    onChange={(e) => setStickyNotes(e.target.value)}
-                                    onBlur={() => saveStickyNotes(stickyNotes)}
-                                    placeholder="הערות קבועות..."
-                                    className="flex-1 resize-none border-gray-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300 text-sm"
-                                    style={{ minHeight: '300px' }}
+                        {/* Pomodoro & Sticky Notes Column */}
+                        <div className="flex flex-col gap-4 h-full">
+                            {/* Pomodoro Timer */}
+                            <div className="flex justify-center py-2">
+                                <PomodoroTimerAlternative
+                                    sessionStart={currentComputerSession.start_time}
+                                    sessionEnd={currentComputerSession.end_time}
+                                    workTopics={workTopics}
+                                    workSubjects={workSubjects}
+                                    onAddTopic={addWorkTopic}
+                                    onUpdateTopic={updateWorkTopic}
+                                    onDeleteTopic={deleteWorkTopic}
+                                    connectedSessions={currentComputerSession.connected_sessions}
                                 />
-                            </CardContent>
-                        </Card>
+                            </div>
+
+                            {/* Sticky Notes */}
+                            <Card className="border-gray-100 shadow-none flex-1 min-h-0">
+                                <CardHeader className="pb-1 px-4 pt-2 flex-shrink-0">
+                                    <div className="flex justify-center">
+                                        <Pin className="w-4 h-4 text-gray-600" />
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="px-4 pb-4 pt-1 flex-1 min-h-0 flex flex-col">
+                                    <Textarea
+                                        value={stickyNotes}
+                                        onChange={(e) => setStickyNotes(e.target.value)}
+                                        onBlur={() => saveStickyNotes(stickyNotes)}
+                                        placeholder="הערות קבועות..."
+                                        className="flex-1 resize-none border-gray-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300 text-sm"
+                                        style={{ minHeight: '300px' }}
+                                    />
+                                </CardContent>
+                            </Card>
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
         </div>
     );
