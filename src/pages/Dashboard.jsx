@@ -321,7 +321,17 @@ export default function Dashboard() {
                         
                         setHasLoadedNotes(true);
                     }
+                } else {
+                    // אם אין אירוע במחשב פעיל, רוקן את ההערות
+                    console.log('🔄 No computer session active - clearing notes');
+                    setDailyNotes('');
+                    setStickyNotes('');
                 }
+            } else {
+                // אם אין אירוע נוכחי בכלל, רוקן את ההערות
+                console.log('🔄 No current event - clearing notes');
+                setDailyNotes('');
+                setStickyNotes('');
             }
 
             setCurrentComputerSession(computerSession);
