@@ -107,7 +107,6 @@ export default function Dashboard() {
     
     // Add loading states to prevent multiple simultaneous calls for data fetching
     const [isLoadingData, setIsLoadingData] = useState(false);
-    const [hasLoadedNotes, setHasLoadedNotes] = useState(false);
 
     // Save functions - optimized to prevent excessive calls
     const saveDailyNotes = useCallback(async (content) => {
@@ -309,29 +308,28 @@ export default function Dashboard() {
                     
                     await new Promise(resolve => setTimeout(resolve, 100));
                     
-                    // Load notes only once when component first loads
-                    if (!hasLoadedNotes) {
-                        const dailyNotesData = await DailyNotes.filter({ date: dateStr });
-                        setDailyNotes(dailyNotesData[0]?.content || '');
-                        
-                        await new Promise(resolve => setTimeout(resolve, 100));
-                        
-                        const stickyNotesData = await StickyNotes.list();
-                        setStickyNotes(stickyNotesData[0]?.content || '');
-                        
-                        setHasLoadedNotes(true);
+                    // Load notes based on computer session date or current date
+                    const notesDateStr = computerSession ? 
+                        moment(computerSession.start_time).format('YYYY-MM-DD') : 
+                        dateStr;
+                    
+                    console.log('🔵 Dashboard loading daily notes for date:', notesDateStr);
+                    console.log('🔵 Computer session date:', computerSession ? moment(computerSession.start_time).format('YYYY-MM-DD') : 'No session');
+                    console.log('🔵 Current date:', dateStr);
+                    
+                    const dailyNotesData = await DailyNotes.filter({ date: notesDateStr });
+                    console.log('🔵 Dashboard found daily notes:', dailyNotesData.length, 'entries');
+                    if (dailyNotesData.length > 0) {
+                        console.log('🔵 Dashboard daily notes content:', `"${dailyNotesData[0].content}"`);
+                        console.log('🔵 Dashboard daily notes date from DB:', dailyNotesData[0].date);
                     }
-                } else {
-                    // אם אין אירוע במחשב פעיל, רוקן את ההערות
-                    console.log('🔄 No computer session active - clearing notes');
-                    setDailyNotes('');
-                    setStickyNotes('');
+                    setDailyNotes(dailyNotesData[0]?.content || '');
+                    
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    
+                    const stickyNotesData = await StickyNotes.list();
+                    setStickyNotes(stickyNotesData[0]?.content || '');
                 }
-            } else {
-                // אם אין אירוע נוכחי בכלל, רוקן את ההערות
-                console.log('🔄 No current event - clearing notes');
-                setDailyNotes('');
-                setStickyNotes('');
             }
 
             setCurrentComputerSession(computerSession);
@@ -342,7 +340,7 @@ export default function Dashboard() {
         } finally {
             setIsLoadingData(false);
         }
-    }, [isLoadingData, hasLoadedNotes]); // Include hasLoadedNotes to control when to load notes
+    }, [isLoadingData]); // Remove hasLoadedNotes dependency to allow notes to update with computer sessions
 
     // Load data on component mount
     useEffect(() => {
