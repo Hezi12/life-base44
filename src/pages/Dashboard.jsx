@@ -326,8 +326,11 @@ export default function Dashboard() {
                     
                     await new Promise(resolve => setTimeout(resolve, 100));
                     
-                    // Only update notes if user is not currently typing
+                    // Only load notes if user is not currently typing
                     if (!isTypingDailyNotes) {
+                        // Load notes based on current date (always current date for Dashboard)
+                        const notesDateStr = dateStr; // Always use current date for Dashboard
+                        
                         console.log('🔵 Dashboard loading daily notes for date:', notesDateStr);
                         console.log('🔵 Computer session date:', computerSession ? moment(computerSession.start_time).format('YYYY-MM-DD') : 'No session');
                         console.log('🔵 Current date:', dateStr);
@@ -343,7 +346,7 @@ export default function Dashboard() {
                     
                     await new Promise(resolve => setTimeout(resolve, 100));
                     
-                    // Only update sticky notes if user is not currently typing
+                    // Only load sticky notes if user is not currently typing
                     if (!isTypingStickyNotes) {
                         const stickyNotesData = await StickyNotes.list();
                         setStickyNotes(stickyNotesData[0]?.content || '');
