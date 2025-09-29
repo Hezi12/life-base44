@@ -122,6 +122,11 @@ export default function Dashboard() {
             } else if (content.trim()) { // Only create new notes if there's actual content
                 await DailyNotes.create({ date: dateStr, content });
             }
+            
+            // Notify Computer page about the change
+            window.dispatchEvent(new CustomEvent('dailyNotesUpdated', { 
+                detail: { date: dateStr, content: content } 
+            }));
         } catch (error) {
             console.error('Error saving daily notes:', error);
         }
@@ -139,6 +144,11 @@ export default function Dashboard() {
             } else if (content.trim()) { // Only create new notes if there's actual content
                 await StickyNotes.create({ content });
             }
+            
+            // Notify Computer page about the change
+            window.dispatchEvent(new CustomEvent('stickyNotesUpdated', { 
+                detail: { content: content } 
+            }));
         } catch (error) {
             console.error('Error saving sticky notes:', error);
         }
@@ -308,10 +318,8 @@ export default function Dashboard() {
                     
                     await new Promise(resolve => setTimeout(resolve, 100));
                     
-                    // Load notes based on computer session date or current date
-                    const notesDateStr = computerSession ? 
-                        moment(computerSession.start_time).format('YYYY-MM-DD') : 
-                        dateStr;
+                    // Load notes based on current date (always current date for Dashboard)
+                    const notesDateStr = dateStr; // Always use current date for Dashboard
                     
                     console.log('🔵 Dashboard loading daily notes for date:', notesDateStr);
                     console.log('🔵 Computer session date:', computerSession ? moment(computerSession.start_time).format('YYYY-MM-DD') : 'No session');
@@ -440,6 +448,32 @@ export default function Dashboard() {
 
         return () => clearInterval(interval);
     }, [loadTodayEvents, isLoadingData]); // Depend on loadTodayEvents and isLoadingData
+
+    // Listen for daily notes changes from Computer page
+    useEffect(() => {
+        const handleDailyNotesChange = (event) => {
+            // Only update if the change is for today's date
+            const todayStr = moment().format('YYYY-MM-DD');
+            if (event.detail && event.detail.date === todayStr) {
+                console.log('🔵 Dashboard received daily notes update for today:', event.detail.content);
+                setDailyNotes(event.detail.content);
+            }
+        };
+
+        window.addEventListener('dailyNotesUpdated', handleDailyNotesChange);
+        return () => window.removeEventListener('dailyNotesUpdated', handleDailyNotesChange);
+    }, []);
+
+    // Listen for sticky notes changes from Computer page
+    useEffect(() => {
+        const handleStickyNotesChange = (event) => {
+            console.log('🔵 Dashboard received sticky notes update:', event.detail.content);
+            setStickyNotes(event.detail.content);
+        };
+
+        window.addEventListener('stickyNotesUpdated', handleStickyNotesChange);
+        return () => window.removeEventListener('stickyNotesUpdated', handleStickyNotesChange);
+    }, []);
 
     // מערכת התראות למיקוד מתוזמן
     useEffect(() => {

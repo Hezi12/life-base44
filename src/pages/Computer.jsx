@@ -67,18 +67,28 @@ export default function Computer() {
         loadStickyNotes();
     }, [hasLoadedStickyNotes]);
 
+    // Load work subjects only once when component mounts
+    useEffect(() => {
+        const loadWorkSubjects = async () => {
+            if (workSubjects.length === 0) {
+                try {
+                    const subjects = await WorkSubject.list();
+                    setWorkSubjects(subjects);
+                } catch (error) {
+                    console.error('Error loading work subjects:', error);
+                }
+            }
+        };
+
+        loadWorkSubjects();
+    }, []); // Load only once
+
     // Load date-specific data when date changes
     useEffect(() => {
         const loadDateSpecificData = async () => {
             const dateStr = currentDate.format('YYYY-MM-DD');
             
             try {
-                // Load work subjects only if not already loaded
-                if (workSubjects.length === 0) {
-                    const subjects = await WorkSubject.list();
-                    setWorkSubjects(subjects);
-                }
-
                 // Small delay to prevent server overload
                 await new Promise(resolve => setTimeout(resolve, 100));
 
@@ -117,7 +127,46 @@ export default function Computer() {
         };
 
         loadDateSpecificData();
-    }, [currentDate, workSubjects.length]);
+    }, [currentDate]); // Only depend on currentDate
+
+    // Listen for daily notes changes from Dashboard
+    useEffect(() => {
+        const handleDailyNotesChange = () => {
+            // Reload daily notes when they change in Dashboard
+            const loadCurrentDailyNotes = async () => {
+                try {
+                    const dateStr = currentDate.format('YYYY-MM-DD');
+                    const dailyNotesData = await DailyNotes.filter({ date: dateStr });
+                    setDailyNotes(dailyNotesData[0]?.content || '');
+                } catch (error) {
+                    console.error('Error reloading daily notes:', error);
+                }
+            };
+            loadCurrentDailyNotes();
+        };
+
+        window.addEventListener('dailyNotesUpdated', handleDailyNotesChange);
+        return () => window.removeEventListener('dailyNotesUpdated', handleDailyNotesChange);
+    }, [currentDate]);
+
+    // Listen for sticky notes changes from Dashboard
+    useEffect(() => {
+        const handleStickyNotesChange = () => {
+            // Reload sticky notes when they change in Dashboard
+            const loadCurrentStickyNotes = async () => {
+                try {
+                    const stickyNotesData = await StickyNotes.list();
+                    setStickyNotes(stickyNotesData[0]?.content || '');
+                } catch (error) {
+                    console.error('Error reloading sticky notes:', error);
+                }
+            };
+            loadCurrentStickyNotes();
+        };
+
+        window.addEventListener('stickyNotesUpdated', handleStickyNotesChange);
+        return () => window.removeEventListener('stickyNotesUpdated', handleStickyNotesChange);
+    }, []);
 
     // Save notes when leaving the page
     useEffect(() => {
@@ -209,6 +258,11 @@ export default function Computer() {
                     console.log('🟠 No content to create new daily notes with');
                 }
             }
+            
+            // Notify Dashboard about the change
+            window.dispatchEvent(new CustomEvent('dailyNotesUpdated', { 
+                detail: { date: dateStr, content: dailyNotes } 
+            }));
         } catch (error) {
             console.error('❌ Error saving daily notes:', error);
         }
@@ -234,6 +288,11 @@ export default function Computer() {
                     console.log('🟠 No content to create new sticky notes with');
                 }
             }
+            
+            // Notify Dashboard about the change
+            window.dispatchEvent(new CustomEvent('stickyNotesUpdated', { 
+                detail: { content: stickyNotes } 
+            }));
         } catch (error) {
             console.error('❌ Error saving sticky notes:', error);
         }
