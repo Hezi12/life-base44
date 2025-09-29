@@ -1004,10 +1004,6 @@ export default function Computer() {
                                 <Textarea
                                     value={dailyNotes}
                                     onChange={(e) => {
-                                        console.log('🟨 Daily notes onChange triggered');
-                                        console.log('🟨 Old value:', `"${dailyNotes}"`);
-                                        console.log('🟨 New value:', `"${e.target.value}"`);
-                                        console.log('🟨 New value length:', e.target.value.length);
                                         setDailyNotes(e.target.value);
                                     }}
                                     onBlur={() => {
@@ -1036,7 +1032,6 @@ export default function Computer() {
                                 <Textarea
                                     value={stickyNotes}
                                     onChange={(e) => {
-                                        console.log('🟨 Sticky notes changed to:', `"${e.target.value}"`);
                                         setStickyNotes(e.target.value);
                                     }}
                                     onBlur={() => {
