@@ -276,9 +276,12 @@ export default function Computer() {
             }
             
             // Notify Dashboard about the change (with source identifier)
-            window.dispatchEvent(new CustomEvent('dailyNotesUpdated', { 
-                detail: { date: dateStr, content: dailyNotes, source: 'computer' } 
-            }));
+            // Only send event if not in the same tab to prevent self-triggering
+            if (document.visibilityState === 'visible') {
+                window.dispatchEvent(new CustomEvent('dailyNotesUpdated', { 
+                    detail: { date: dateStr, content: dailyNotes, source: 'computer' } 
+                }));
+            }
         } catch (error) {
             console.error('❌ Error saving daily notes:', error);
         }
@@ -306,9 +309,12 @@ export default function Computer() {
             }
             
             // Notify Dashboard about the change (with source identifier)
-            window.dispatchEvent(new CustomEvent('stickyNotesUpdated', { 
-                detail: { content: stickyNotes, source: 'computer' } 
-            }));
+            // Only send event if not in the same tab to prevent self-triggering
+            if (document.visibilityState === 'visible') {
+                window.dispatchEvent(new CustomEvent('stickyNotesUpdated', { 
+                    detail: { content: stickyNotes, source: 'computer' } 
+                }));
+            }
         } catch (error) {
             console.error('❌ Error saving sticky notes:', error);
         }
@@ -1006,11 +1012,9 @@ export default function Computer() {
                                     onChange={(e) => {
                                         setDailyNotes(e.target.value);
                                     }}
-                                    onBlur={(e) => {
+                                    onBlur={() => {
                                         console.log('🟨 Daily notes onBlur triggered');
-                                        // Update state first, then save
-                                        setDailyNotes(e.target.value);
-                                        setTimeout(() => saveDailyNotes(), 0);
+                                        saveDailyNotes();
                                     }}
                                     placeholder="הערות יומיות..."
                                     className="resize-none border-gray-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300 text-sm h-48"
@@ -1036,11 +1040,9 @@ export default function Computer() {
                                     onChange={(e) => {
                                         setStickyNotes(e.target.value);
                                     }}
-                                    onBlur={(e) => {
+                                    onBlur={() => {
                                         console.log('🟨 Sticky notes onBlur triggered');
-                                        // Update state first, then save
-                                        setStickyNotes(e.target.value);
-                                        setTimeout(() => saveStickyNotes(), 0);
+                                        saveStickyNotes();
                                     }}
                                     placeholder="הערות קבועות..."
                                     className="resize-none border-gray-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300 text-sm h-32"

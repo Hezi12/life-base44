@@ -124,9 +124,12 @@ export default function Dashboard() {
             }
             
             // Notify Computer page about the change (with source identifier)
-            window.dispatchEvent(new CustomEvent('dailyNotesUpdated', { 
-                detail: { date: dateStr, content: content, source: 'dashboard' } 
-            }));
+            // Only send event if not in the same tab to prevent self-triggering
+            if (document.visibilityState === 'visible') {
+                window.dispatchEvent(new CustomEvent('dailyNotesUpdated', { 
+                    detail: { date: dateStr, content: content, source: 'dashboard' } 
+                }));
+            }
         } catch (error) {
             console.error('Error saving daily notes:', error);
         }
@@ -146,9 +149,12 @@ export default function Dashboard() {
             }
             
             // Notify Computer page about the change (with source identifier)
-            window.dispatchEvent(new CustomEvent('stickyNotesUpdated', { 
-                detail: { content: content, source: 'dashboard' } 
-            }));
+            // Only send event if not in the same tab to prevent self-triggering
+            if (document.visibilityState === 'visible') {
+                window.dispatchEvent(new CustomEvent('stickyNotesUpdated', { 
+                    detail: { content: content, source: 'dashboard' } 
+                }));
+            }
         } catch (error) {
             console.error('Error saving sticky notes:', error);
         }
@@ -659,7 +665,7 @@ export default function Dashboard() {
                             <Textarea
                                 value={stickyNotes}
                                 onChange={(e) => setStickyNotes(e.target.value)}
-                                onBlur={(e) => saveStickyNotes(e.target.value)}
+                                onBlur={() => saveStickyNotes(stickyNotes)}
                                 placeholder="הערות קבועות..."
                                 className="flex-1 resize-none border-gray-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300 text-sm"
                                 style={{ minHeight: '200px' }}
@@ -710,7 +716,7 @@ export default function Dashboard() {
                                 <Textarea
                                     value={dailyNotes}
                                     onChange={(e) => setDailyNotes(e.target.value)}
-                                    onBlur={(e) => saveDailyNotes(e.target.value)}
+                                    onBlur={() => saveDailyNotes(dailyNotes)}
                                     placeholder="הערות יומיות..."
                                     className="flex-1 resize-none border-gray-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300 text-sm min-h-0"
                                     autoComplete="off"
@@ -750,7 +756,7 @@ export default function Dashboard() {
                                 <Textarea
                                     value={stickyNotes}
                                     onChange={(e) => setStickyNotes(e.target.value)}
-                                    onBlur={(e) => saveStickyNotes(e.target.value)}
+                                    onBlur={() => saveStickyNotes(stickyNotes)}
                                     placeholder="הערות קבועות..."
                                     className="flex-1 resize-none border-gray-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300 text-sm"
                                     style={{ minHeight: '300px' }}
