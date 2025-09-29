@@ -552,14 +552,14 @@ export default function Computer() {
                     {/* Right Side - סיכום יומי + Work Sessions */}
                     <div className="space-y-6">
                         {/* Stats */}
-                        <Card className="border-gray-100 shadow-none">
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2 text-right text-lg">
-                                    <PieChart className="w-5 h-5" />
+                            <Card className="border-gray-100 shadow-none">
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2 text-right text-lg">
+                                        <PieChart className="w-5 h-5" />
                                     סיכום יומי
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-4 text-right">
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4 text-right">
                                 {(() => {
                                     console.log('🔍 === DETAILED SUMMARY DEBUG ===');
                                     
@@ -665,20 +665,20 @@ export default function Computer() {
 
                                     return (
                                         <>
-                                            <div className="space-y-2">
-                                                <div className="flex justify-between text-sm">
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between text-sm">
                                                     <span>{Math.floor(totalWorkMinutes / 60)}:{(totalWorkMinutes % 60).toString().padStart(2, '0')}</span>
-                                                </div>
-                                                <div className="w-full bg-gray-200 rounded-full h-2">
-                                                    <div
-                                                        className="bg-blue-500 h-2 rounded-full"
+                                        </div>
+                                        <div className="w-full bg-gray-200 rounded-full h-2">
+                                            <div
+                                                className="bg-blue-500 h-2 rounded-full"
                                                         style={{width: `${totalWorkMinutes > 0 ? (totalTopicsMinutes / totalWorkMinutes) * 100 : 0}%`}}
-                                                    ></div>
-                                                </div>
-                                            </div>
+                                            ></div>
+                                        </div>
+                                    </div>
 
                                             {Object.keys(topicsSummary).length > 0 && (
-                                                <div className="space-y-3">
+                                        <div className="space-y-3">
                                                     {Object.entries(topicsSummary).map(([topicName, minutes]) => {
                                                         console.log(`🎨 === RENDERING TOPIC "${topicName}" ===`);
                                                         console.log(`   Raw minutes: ${minutes}`);
@@ -692,43 +692,43 @@ export default function Computer() {
                                                         const timeString = `${hours}:${mins.toString().padStart(2, '0')}`;
                                                         console.log(`   Time string: ${timeString} (${hours}h ${mins}m)`);
                                                         
-                                                        const subjectData = workSubjects.find(s => s.name === topicName) || {};
+                                                const subjectData = workSubjects.find(s => s.name === topicName) || {};
                                                         console.log(`   Subject data:`, subjectData);
                                                         
-                                                        const IconComponent = getIconComponent(subjectData.icon);
-                                                        const subjectColor = subjectData.color || '#6b7280';
+                                                const IconComponent = getIconComponent(subjectData.icon);
+                                                const subjectColor = subjectData.color || '#6b7280';
                                                         console.log(`   Icon: ${subjectData.icon}, Color: ${subjectColor}`);
                                                         
                                                         console.log(`🎨 === END RENDERING TOPIC "${topicName}" ===`);
-                                                        
-                                                        return (
-                                                            <div key={topicName} className="flex items-center justify-between text-sm">
-                                                                <div className="flex items-center gap-2">
+                                                
+                                                return (
+                                                    <div key={topicName} className="flex items-center justify-between text-sm">
+                                                        <div className="flex items-center gap-2">
                                                                     <span>{timeString}</span>
-                                                                    <span className="text-gray-500">({percentage}%)</span>
-                                                                </div>
-                                                                <div className="flex items-center gap-2">
-                                                                    <span>{topicName}</span>
-                                                                    <div
-                                                                        className="w-4 h-4 rounded-sm flex items-center justify-center"
-                                                                        style={{ backgroundColor: `${subjectColor}20` }}
-                                                                    >
-                                                                        <IconComponent
-                                                                            className="w-3 h-3"
-                                                                            style={{ color: subjectColor }}
-                                                                        />
-                                                                    </div>
-                                                                </div>
+                                                            <span className="text-gray-500">({percentage}%)</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span>{topicName}</span>
+                                                            <div
+                                                                className="w-4 h-4 rounded-sm flex items-center justify-center"
+                                                                style={{ backgroundColor: `${subjectColor}20` }}
+                                                            >
+                                                                <IconComponent
+                                                                    className="w-3 h-3"
+                                                                    style={{ color: subjectColor }}
+                                                                />
                                                             </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            )}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
                                         </>
                                     );
                                 })()}
-                            </CardContent>
-                        </Card>
+                                </CardContent>
+                            </Card>
 
                         {/* Work Sessions */}
                         {workSessions.length > 0 ? (
@@ -906,6 +906,11 @@ export default function Computer() {
                                     }}
                                     placeholder="הערות יומיות..."
                                     className="resize-none border-gray-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300 text-sm h-48"
+                                    autoComplete="off"
+                                    autoCorrect="off"
+                                    autoCapitalize="off"
+                                    spellCheck="false"
+                                    data-form-type="other"
                                 />
                             </CardContent>
                         </Card>
@@ -930,6 +935,11 @@ export default function Computer() {
                                     }}
                                     placeholder="הערות קבועות..."
                                     className="resize-none border-gray-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300 text-sm h-32"
+                                    autoComplete="off"
+                                    autoCorrect="off"
+                                    autoCapitalize="off"
+                                    spellCheck="false"
+                                    data-form-type="other"
                                 />
                             </CardContent>
                         </Card>
@@ -955,16 +965,16 @@ export default function Computer() {
                         {/* Single row with all controls */}
                         <div className="flex items-center gap-3">
                             {/* Subject Select */}
-                            <select 
-                                value={newTopicSubject}
-                                onChange={(e) => setNewTopicSubject(e.target.value)}
+                        <select 
+                            value={newTopicSubject}
+                            onChange={(e) => setNewTopicSubject(e.target.value)}
                                 className="flex-1 p-3 border rounded-xl text-right bg-white text-base touch-manipulation"
-                            >
-                                <option value="">בחר נושא</option>
-                                {workSubjects.map(subject => (
-                                    <option key={subject.id} value={subject.id}>{subject.name}</option>
-                                ))}
-                            </select>
+                        >
+                            <option value="">בחר נושא</option>
+                            {workSubjects.map(subject => (
+                                <option key={subject.id} value={subject.id}>{subject.name}</option>
+                            ))}
+                        </select>
                             
                             {/* Start Time */}
                             <Input
@@ -972,6 +982,11 @@ export default function Computer() {
                                 value={newTopicStart}
                                 onChange={(e) => setNewTopicStart(e.target.value)}
                                 className="w-28 text-center text-base touch-manipulation"
+                                autoComplete="off"
+                                autoCorrect="off"
+                                autoCapitalize="off"
+                                spellCheck="false"
+                                data-form-type="other"
                             />
                             
                             {/* Separator */}
@@ -983,6 +998,11 @@ export default function Computer() {
                                 value={newTopicEnd}
                                 onChange={(e) => setNewTopicEnd(e.target.value)}
                                 className="w-28 text-center text-base touch-manipulation"
+                                autoComplete="off"
+                                autoCorrect="off"
+                                autoCapitalize="off"
+                                spellCheck="false"
+                                data-form-type="other"
                             />
                             
                             {/* Action Button */}

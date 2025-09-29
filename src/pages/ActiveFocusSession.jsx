@@ -224,6 +224,11 @@ export default function NewActiveFocusSession() {
                     placeholder="כתוב כאן את המחשבות שלך, התכניות, והרפלקציות..."
                     className="w-full h-full min-h-[400px] resize-none border-0 focus:ring-0 text-base leading-relaxed p-4 bg-transparent"
                     style={{ outline: 'none', boxShadow: 'none' }}
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck="false"
+                    data-form-type="other"
                 />
             </div>
 
@@ -238,6 +243,11 @@ export default function NewActiveFocusSession() {
                             value={nextSessionTime}
                             onChange={(e) => setNextSessionTime(e.target.value)}
                             className="w-auto bg-gray-50 border-gray-200 focus:border-blue-400 focus:ring-blue-400 text-sm"
+                            autoComplete="off"
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck="false"
+                            data-form-type="other"
                         />
                     </div>
                     

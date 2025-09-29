@@ -610,6 +610,11 @@ export default function Dashboard() {
                                 placeholder="הערות קבועות..."
                                 className="flex-1 resize-none border-gray-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300 text-sm"
                                 style={{ minHeight: '200px' }}
+                                autoComplete="off"
+                                autoCorrect="off"
+                                autoCapitalize="off"
+                                spellCheck="false"
+                                data-form-type="other"
                             />
                         </CardContent>
                     </Card>
@@ -655,6 +660,11 @@ export default function Dashboard() {
                                     onBlur={() => saveDailyNotes(dailyNotes)}
                                     placeholder="הערות יומיות..."
                                     className="flex-1 resize-none border-gray-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300 text-sm min-h-0"
+                                    autoComplete="off"
+                                    autoCorrect="off"
+                                    autoCapitalize="off"
+                                    spellCheck="false"
+                                    data-form-type="other"
                                 />
                             </CardContent>
                         </Card>
@@ -691,6 +701,11 @@ export default function Dashboard() {
                                     placeholder="הערות קבועות..."
                                     className="flex-1 resize-none border-gray-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300 text-sm"
                                     style={{ minHeight: '300px' }}
+                                    autoComplete="off"
+                                    autoCorrect="off"
+                                    autoCapitalize="off"
+                                    spellCheck="false"
+                                    data-form-type="other"
                                 />
                             </CardContent>
                         </Card>

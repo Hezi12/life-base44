@@ -373,6 +373,11 @@ export default function Design() {
                   <Textarea
                     placeholder=""
                     className="h-32 border-gray-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-200 resize-none"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck="false"
+                    data-form-type="other"
                   />
                 </CardContent>
               </Card>
@@ -476,11 +481,11 @@ export default function Design() {
             </div>
              <div className="grid grid-cols-3 items-center gap-4">
               <Label htmlFor="time-reminder" className="text-right">תזכורת יומית</Label>
-              <Input id="time-reminder" type="time" defaultValue="09:00" className="col-span-2 w-fit" />
+                    <Input id="time-reminder" type="time" defaultValue="09:00" className="col-span-2 w-fit" autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck="false" data-form-type="other" />
             </div>
              <div className="grid grid-cols-3 items-center gap-4">
               <Label htmlFor="date-reminder" className="text-right">תאריך התחלה</Label>
-              <Input id="date-reminder" type="date" defaultValue={today} className="col-span-2 w-fit" />
+              <Input id="date-reminder" type="date" defaultValue={today} className="col-span-2 w-fit" autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck="false" data-form-type="other" />
             </div>
           </div>
           <DialogFooter className="flex justify-start">

@@ -370,7 +370,12 @@ export default function NewFocus() {
                                 type="number" 
                                 value={settings.notification_minutes_before}
                                 onChange={(e) => setSettings({...settings, notification_minutes_before: parseInt(e.target.value)})}
-                                className="col-span-1 w-12 sm:w-16 text-sm" 
+                                className="col-span-1 w-12 sm:w-16 text-sm"
+                                autoComplete="off"
+                                autoCorrect="off"
+                                autoCapitalize="off"
+                                spellCheck="false"
+                                data-form-type="other"
                             />
                         </div>
 
@@ -436,6 +441,11 @@ export default function NewFocus() {
                                 value={newScheduleTime}
                                 onChange={(e) => setNewScheduleTime(e.target.value)}
                                 className="w-24 text-center"
+                                autoComplete="off"
+                                autoCorrect="off"
+                                autoCapitalize="off"
+                                spellCheck="false"
+                                data-form-type="other"
                             />
                         </div>
                         

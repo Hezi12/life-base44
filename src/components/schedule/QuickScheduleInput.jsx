@@ -311,6 +311,11 @@ export default function QuickScheduleInput({ isOpen, onClose, onAddEvents, categ
                             placeholder=""
                             className="h-48 sm:h-64 text-sm sm:text-base font-mono resize-none border-gray-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300 text-right"
                             dir="rtl"
+                            autoComplete="off"
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck="false"
+                            data-form-type="other"
                         />
                         <div className="flex justify-start">
                             <Button onClick={handleParseText} disabled={!textInput.trim()} size="sm">

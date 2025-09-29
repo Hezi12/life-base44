@@ -393,6 +393,11 @@ const CategorySettings = ({ isOpen, onClose, onCategoriesChange }) => {
                             onChange={(e) => setNewCategoryName(e.target.value)}
                             placeholder="שם קטגוריה"
                             className="text-right"
+                            autoComplete="off"
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck="false"
+                            data-form-type="other"
                         />
 
                         <div className="flex items-center gap-3">
@@ -439,6 +444,11 @@ const CategorySettings = ({ isOpen, onClose, onCategoriesChange }) => {
                             onChange={(e) => setNewCategoryKeywords(e.target.value)}
                             placeholder="מילות מפתח (מופרדות בפסיקים)"
                             className="text-right" // Removed h-16 resize-none text-sm
+                            autoComplete="off"
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck="false"
+                            data-form-type="other"
                         />
 
                         <div className="flex justify-end gap-2">

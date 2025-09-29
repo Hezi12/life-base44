@@ -696,6 +696,11 @@ ${userData.weekNotes.map(note =>
                 placeholder="הכנס את הפורמט של תגובת ה-AI..."
                 className="min-h-[400px] text-sm"
                 dir="rtl"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck="false"
+                data-form-type="other"
               />
               
               <div className="flex justify-start gap-2">

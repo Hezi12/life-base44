@@ -1179,6 +1179,11 @@ const AddHabitForm = ({ onClose, onAdd, editingHabit }) => {
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
           placeholder=""
           className="text-right"
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck="false"
+          data-form-type="other"
         />
       </div>
       
@@ -1189,6 +1194,11 @@ const AddHabitForm = ({ onClose, onAdd, editingHabit }) => {
           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
           placeholder=""
           className="text-right h-20 resize-none"
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck="false"
+          data-form-type="other"
         />
       </div>
       
@@ -1235,6 +1245,11 @@ const AddHabitForm = ({ onClose, onAdd, editingHabit }) => {
               value={formData.start_date}
               onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
               className="text-sm h-8"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck="false"
+              data-form-type="other"
             />
           </div>
           
@@ -1246,6 +1261,11 @@ const AddHabitForm = ({ onClose, onAdd, editingHabit }) => {
                 value={formData.end_date}
                 onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
                 className="text-sm h-8"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck="false"
+                data-form-type="other"
               />
             </div>
           )}
@@ -1260,6 +1280,11 @@ const AddHabitForm = ({ onClose, onAdd, editingHabit }) => {
                 onChange={(e) => setFormData({ ...formData, duration_days: e.target.value })}
                 placeholder="30"
                 className="text-sm h-8"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck="false"
+                data-form-type="other"
               />
             </div>
           )}
@@ -1343,6 +1368,11 @@ const AddHabitForm = ({ onClose, onAdd, editingHabit }) => {
                     onChange={(e) => setFormData({...formData, penalty_amount: e.target.value})}
                     placeholder="40"
                     className="text-sm h-8 flex-1"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck="false"
+                    data-form-type="other"
                   />
                   <span className="text-xs text-gray-500">₪</span>
                 </div>
@@ -1369,6 +1399,11 @@ const AddHabitForm = ({ onClose, onAdd, editingHabit }) => {
                       onChange={(e) => setFormData({...formData, penalty_secondary_amount: e.target.value})}
                       placeholder="60"
                       className="text-sm h-8 flex-1"
+                      autoComplete="off"
+                      autoCorrect="off"
+                      autoCapitalize="off"
+                      spellCheck="false"
+                      data-form-type="other"
                     />
                     <span className="text-xs text-gray-500">₪</span>
                   </div>
@@ -1383,6 +1418,11 @@ const AddHabitForm = ({ onClose, onAdd, editingHabit }) => {
                     value={formData.penalty_secondary_hours}
                     onChange={(e) => setFormData({...formData, penalty_secondary_hours: parseInt(e.target.value) || 1})}
                     className="text-sm h-8 w-16"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck="false"
+                    data-form-type="other"
                   />
                 </div>
               </div>

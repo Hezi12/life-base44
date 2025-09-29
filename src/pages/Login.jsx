@@ -72,6 +72,11 @@ export default function Login({ onLogin }) {
                 required
                 className="text-right"
                 dir="ltr"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck="false"
+                data-form-type="other"
               />
             </div>
             
@@ -84,6 +89,11 @@ export default function Login({ onLogin }) {
                 required
                 className="text-right pr-10"
                 dir="ltr"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck="false"
+                data-form-type="other"
               />
               <button
                 type="button"

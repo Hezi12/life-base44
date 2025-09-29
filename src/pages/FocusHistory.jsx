@@ -628,6 +628,11 @@ ${nextTime ? `→ המיקוד הבא ${nextTime.format('HH:mm DD/MM/YYYY')}` : 
                                 onChange={(e) => setImportText(e.target.value)}
                                 placeholder="הדבק כאן את הטקסט של המיקודים..."
                                 className="min-h-[300px] text-right"
+                                autoComplete="off"
+                                autoCorrect="off"
+                                autoCapitalize="off"
+                                spellCheck="false"
+                                data-form-type="other"
                             />
                         </div>
                         <DialogFooter className="flex gap-2">
@@ -667,6 +672,11 @@ ${nextTime ? `→ המיקוד הבא ${nextTime.format('HH:mm DD/MM/YYYY')}` : 
                                     value={editContent}
                                     onChange={(e) => setEditContent(e.target.value)}
                                     className="col-span-3 text-right min-h-[150px]"
+                                    autoComplete="off"
+                                    autoCorrect="off"
+                                    autoCapitalize="off"
+                                    spellCheck="false"
+                                    data-form-type="other"
                                 />
                             </div>
                             <div className="grid grid-cols-4 items-center gap-4">
@@ -679,6 +689,11 @@ ${nextTime ? `→ המיקוד הבא ${nextTime.format('HH:mm DD/MM/YYYY')}` : 
                                     value={editStartTime}
                                     onChange={(e) => setEditStartTime(e.target.value)}
                                     className="col-span-3 text-right"
+                                    autoComplete="off"
+                                    autoCorrect="off"
+                                    autoCapitalize="off"
+                                    spellCheck="false"
+                                    data-form-type="other"
                                 />
                             </div>
                             <div className="grid grid-cols-4 items-center gap-4">
@@ -691,6 +706,11 @@ ${nextTime ? `→ המיקוד הבא ${nextTime.format('HH:mm DD/MM/YYYY')}` : 
                                     value={editNextSessionTime}
                                     onChange={(e) => setEditNextSessionTime(e.target.value)}
                                     className="col-span-3 text-right"
+                                    autoComplete="off"
+                                    autoCorrect="off"
+                                    autoCapitalize="off"
+                                    spellCheck="false"
+                                    data-form-type="other"
                                 />
                             </div>
                         </div>
