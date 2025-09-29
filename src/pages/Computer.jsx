@@ -100,8 +100,16 @@ export default function Computer() {
                 await new Promise(resolve => setTimeout(resolve, 100));
 
                 // Load daily notes
+                console.log('🟡 Loading daily notes for date:', dateStr);
+                console.log('🟡 Current date object:', currentDate.format());
                 const dailyNotesData = await DailyNotes.filter({ date: dateStr });
+                console.log('🟡 Found daily notes:', dailyNotesData.length, 'entries');
+                if (dailyNotesData.length > 0) {
+                    console.log('🟡 Daily notes content:', `"${dailyNotesData[0].content}"`);
+                    console.log('🟡 Daily notes date from DB:', dailyNotesData[0].date);
+                }
                 setDailyNotes(dailyNotesData[0]?.content || '');
+                console.log('🟡 Set daily notes to:', `"${dailyNotesData[0]?.content || ''}"`);
 
             } catch (error) {
                 console.error('Error loading data:', error);
@@ -116,17 +124,32 @@ export default function Computer() {
         const handleBeforeUnload = () => {
             console.log('🔵 handleBeforeUnload triggered');
             const dateStr = currentDate.format('YYYY-MM-DD');
+            console.log('🔵 Current date being used for save:', dateStr);
+            console.log('🔵 Current date object:', currentDate.format());
             
             console.log('🔵 Saving on page unload - Daily notes:', `"${dailyNotes}"`, 'Sticky notes:', `"${stickyNotes}"`);
             
             // שמירת הערות יומיות - כולל מחיקה (מחרוזת ריקה)
+            console.log('🔵 About to save daily notes on unload. Content:', `"${dailyNotes}"`);
+            console.log('🔵 Content length:', dailyNotes.length);
+            console.log('🔵 Is empty?', dailyNotes === '');
+            
             DailyNotes.filter({ date: dateStr }).then(existingNotes => {
+                console.log('🔵 Found existing daily notes:', existingNotes.length);
                 if (existingNotes.length > 0) {
                     console.log('🔵 Updating daily notes on unload. Old:', `"${existingNotes[0].content}"`, 'New:', `"${dailyNotes}"`);
-                    DailyNotes.update(existingNotes[0].id, { content: dailyNotes });
+                    DailyNotes.update(existingNotes[0].id, { content: dailyNotes }).then(() => {
+                        console.log('🔵 Daily notes updated on unload successfully');
+                        // Verify the update
+                        return DailyNotes.filter({ date: dateStr });
+                    }).then(verifyNotes => {
+                        console.log('🔍 Verification after unload update:', `"${verifyNotes[0]?.content}"`);
+                    });
                 } else if (dailyNotes.trim()) {
                     console.log('🔵 Creating daily notes on unload:', `"${dailyNotes}"`);
                     DailyNotes.create({ date: dateStr, content: dailyNotes });
+                } else {
+                    console.log('🔵 No existing notes and no content to create');
                 }
             }).catch(error => {
                 console.error('❌ Error saving daily notes on unload:', error);
@@ -158,9 +181,14 @@ export default function Computer() {
     // Save functions for manual saves (onBlur)
     const saveDailyNotes = async () => {
         console.log('🟡 saveDailyNotes called with content:', `"${dailyNotes}"`);
+        console.log('🟡 Content length:', dailyNotes.length);
+        console.log('🟡 Content trimmed:', `"${dailyNotes.trim()}"`);
+        console.log('🟡 Is empty string?', dailyNotes === '');
         
         try {
             const dateStr = currentDate.format('YYYY-MM-DD');
+            console.log('🟡 saveDailyNotes - Current date being used:', dateStr);
+            console.log('🟡 saveDailyNotes - Current date object:', currentDate.format());
             const existingNotes = await DailyNotes.filter({ date: dateStr });
             console.log('🟡 Existing daily notes found:', existingNotes.length);
 
@@ -168,6 +196,10 @@ export default function Computer() {
                 console.log('🟢 Updating daily notes. Old content:', `"${existingNotes[0].content}"`, 'New content:', `"${dailyNotes}"`);
                 await DailyNotes.update(existingNotes[0].id, { content: dailyNotes });
                 console.log('✅ Daily notes updated successfully');
+                
+                // Verify the update
+                const verifyNotes = await DailyNotes.filter({ date: dateStr });
+                console.log('🔍 Verification - notes after update:', `"${verifyNotes[0]?.content}"`);
             } else {
                 if (dailyNotes.trim()) { // יצירה חדשה רק אם יש תוכן
                     console.log('🟢 Creating new daily notes with content:', `"${dailyNotes}"`);
@@ -897,7 +929,10 @@ export default function Computer() {
                                 <Textarea
                                     value={dailyNotes}
                                     onChange={(e) => {
-                                        console.log('🟨 Daily notes changed to:', `"${e.target.value}"`);
+                                        console.log('🟨 Daily notes onChange triggered');
+                                        console.log('🟨 Old value:', `"${dailyNotes}"`);
+                                        console.log('🟨 New value:', `"${e.target.value}"`);
+                                        console.log('🟨 New value length:', e.target.value.length);
                                         setDailyNotes(e.target.value);
                                     }}
                                     onBlur={() => {
