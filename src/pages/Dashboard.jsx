@@ -107,6 +107,7 @@ export default function Dashboard() {
     
     // Add loading states to prevent multiple simultaneous calls for data fetching
     const [isLoadingData, setIsLoadingData] = useState(false);
+    const [hasLoadedNotes, setHasLoadedNotes] = useState(false);
 
     // Save functions - optimized to prevent excessive calls
     const saveDailyNotes = useCallback(async (content) => {
@@ -308,18 +309,17 @@ export default function Dashboard() {
                     
                     await new Promise(resolve => setTimeout(resolve, 100));
                     
-                    // Load daily notes only if current state is empty to avoid overwriting user input
-                    if (dailyNotes === '') {
+                    // Load notes only once when component first loads
+                    if (!hasLoadedNotes) {
                         const dailyNotesData = await DailyNotes.filter({ date: dateStr });
                         setDailyNotes(dailyNotesData[0]?.content || '');
-                    }
-                    
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                    
-                    // Load sticky notes only if current state is empty to avoid overwriting user input
-                    if (stickyNotes === '') {
+                        
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        
                         const stickyNotesData = await StickyNotes.list();
                         setStickyNotes(stickyNotesData[0]?.content || '');
+                        
+                        setHasLoadedNotes(true);
                     }
                 }
             }
@@ -332,7 +332,7 @@ export default function Dashboard() {
         } finally {
             setIsLoadingData(false);
         }
-    }, [isLoadingData, dailyNotes, stickyNotes]); // Include notes in dependencies for conditional loading logic
+    }, [isLoadingData, hasLoadedNotes]); // Include hasLoadedNotes to control when to load notes
 
     // Load data on component mount
     useEffect(() => {
