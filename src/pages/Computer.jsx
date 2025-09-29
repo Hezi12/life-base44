@@ -1006,9 +1006,11 @@ export default function Computer() {
                                     onChange={(e) => {
                                         setDailyNotes(e.target.value);
                                     }}
-                                    onBlur={() => {
+                                    onBlur={(e) => {
                                         console.log('🟨 Daily notes onBlur triggered');
-                                        saveDailyNotes();
+                                        // Update state first, then save
+                                        setDailyNotes(e.target.value);
+                                        setTimeout(() => saveDailyNotes(), 0);
                                     }}
                                     placeholder="הערות יומיות..."
                                     className="resize-none border-gray-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300 text-sm h-48"
@@ -1034,9 +1036,11 @@ export default function Computer() {
                                     onChange={(e) => {
                                         setStickyNotes(e.target.value);
                                     }}
-                                    onBlur={() => {
+                                    onBlur={(e) => {
                                         console.log('🟨 Sticky notes onBlur triggered');
-                                        saveStickyNotes();
+                                        // Update state first, then save
+                                        setStickyNotes(e.target.value);
+                                        setTimeout(() => saveStickyNotes(), 0);
                                     }}
                                     placeholder="הערות קבועות..."
                                     className="resize-none border-gray-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300 text-sm h-32"

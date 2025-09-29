@@ -659,7 +659,7 @@ export default function Dashboard() {
                             <Textarea
                                 value={stickyNotes}
                                 onChange={(e) => setStickyNotes(e.target.value)}
-                                onBlur={() => saveStickyNotes(stickyNotes)}
+                                onBlur={(e) => saveStickyNotes(e.target.value)}
                                 placeholder="הערות קבועות..."
                                 className="flex-1 resize-none border-gray-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300 text-sm"
                                 style={{ minHeight: '200px' }}
@@ -710,7 +710,7 @@ export default function Dashboard() {
                                 <Textarea
                                     value={dailyNotes}
                                     onChange={(e) => setDailyNotes(e.target.value)}
-                                    onBlur={() => saveDailyNotes(dailyNotes)}
+                                    onBlur={(e) => saveDailyNotes(e.target.value)}
                                     placeholder="הערות יומיות..."
                                     className="flex-1 resize-none border-gray-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300 text-sm min-h-0"
                                     autoComplete="off"
@@ -750,7 +750,7 @@ export default function Dashboard() {
                                 <Textarea
                                     value={stickyNotes}
                                     onChange={(e) => setStickyNotes(e.target.value)}
-                                    onBlur={() => saveStickyNotes(stickyNotes)}
+                                    onBlur={(e) => saveStickyNotes(e.target.value)}
                                     placeholder="הערות קבועות..."
                                     className="flex-1 resize-none border-gray-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300 text-sm"
                                     style={{ minHeight: '300px' }}
