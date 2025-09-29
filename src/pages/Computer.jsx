@@ -131,41 +131,57 @@ export default function Computer() {
 
     // Listen for daily notes changes from Dashboard
     useEffect(() => {
-        const handleDailyNotesChange = () => {
-            // Reload daily notes when they change in Dashboard
-            const loadCurrentDailyNotes = async () => {
-                try {
-                    const dateStr = currentDate.format('YYYY-MM-DD');
-                    const dailyNotesData = await DailyNotes.filter({ date: dateStr });
-                    setDailyNotes(dailyNotesData[0]?.content || '');
-                } catch (error) {
-                    console.error('Error reloading daily notes:', error);
-                }
-            };
-            loadCurrentDailyNotes();
+        let timeoutId;
+        
+        const handleDailyNotesChange = (event) => {
+            // Only update if not from this page
+            if (event.detail && event.detail.source !== 'computer') {
+                // Debounce to prevent rapid updates
+                clearTimeout(timeoutId);
+                timeoutId = setTimeout(async () => {
+                    try {
+                        const dateStr = currentDate.format('YYYY-MM-DD');
+                        const dailyNotesData = await DailyNotes.filter({ date: dateStr });
+                        setDailyNotes(dailyNotesData[0]?.content || '');
+                    } catch (error) {
+                        console.error('Error reloading daily notes:', error);
+                    }
+                }, 100);
+            }
         };
 
         window.addEventListener('dailyNotesUpdated', handleDailyNotesChange);
-        return () => window.removeEventListener('dailyNotesUpdated', handleDailyNotesChange);
+        return () => {
+            window.removeEventListener('dailyNotesUpdated', handleDailyNotesChange);
+            clearTimeout(timeoutId);
+        };
     }, [currentDate]);
 
     // Listen for sticky notes changes from Dashboard
     useEffect(() => {
-        const handleStickyNotesChange = () => {
-            // Reload sticky notes when they change in Dashboard
-            const loadCurrentStickyNotes = async () => {
-                try {
-                    const stickyNotesData = await StickyNotes.list();
-                    setStickyNotes(stickyNotesData[0]?.content || '');
-                } catch (error) {
-                    console.error('Error reloading sticky notes:', error);
-                }
-            };
-            loadCurrentStickyNotes();
+        let timeoutId;
+        
+        const handleStickyNotesChange = (event) => {
+            // Only update if not from this page
+            if (event.detail && event.detail.source !== 'computer') {
+                // Debounce to prevent rapid updates
+                clearTimeout(timeoutId);
+                timeoutId = setTimeout(async () => {
+                    try {
+                        const stickyNotesData = await StickyNotes.list();
+                        setStickyNotes(stickyNotesData[0]?.content || '');
+                    } catch (error) {
+                        console.error('Error reloading sticky notes:', error);
+                    }
+                }, 100);
+            }
         };
 
         window.addEventListener('stickyNotesUpdated', handleStickyNotesChange);
-        return () => window.removeEventListener('stickyNotesUpdated', handleStickyNotesChange);
+        return () => {
+            window.removeEventListener('stickyNotesUpdated', handleStickyNotesChange);
+            clearTimeout(timeoutId);
+        };
     }, []);
 
     // Save notes when leaving the page
@@ -259,9 +275,9 @@ export default function Computer() {
                 }
             }
             
-            // Notify Dashboard about the change
+            // Notify Dashboard about the change (with source identifier)
             window.dispatchEvent(new CustomEvent('dailyNotesUpdated', { 
-                detail: { date: dateStr, content: dailyNotes } 
+                detail: { date: dateStr, content: dailyNotes, source: 'computer' } 
             }));
         } catch (error) {
             console.error('❌ Error saving daily notes:', error);
@@ -289,9 +305,9 @@ export default function Computer() {
                 }
             }
             
-            // Notify Dashboard about the change
+            // Notify Dashboard about the change (with source identifier)
             window.dispatchEvent(new CustomEvent('stickyNotesUpdated', { 
-                detail: { content: stickyNotes } 
+                detail: { content: stickyNotes, source: 'computer' } 
             }));
         } catch (error) {
             console.error('❌ Error saving sticky notes:', error);

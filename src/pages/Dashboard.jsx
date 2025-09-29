@@ -123,9 +123,9 @@ export default function Dashboard() {
                 await DailyNotes.create({ date: dateStr, content });
             }
             
-            // Notify Computer page about the change
+            // Notify Computer page about the change (with source identifier)
             window.dispatchEvent(new CustomEvent('dailyNotesUpdated', { 
-                detail: { date: dateStr, content: content } 
+                detail: { date: dateStr, content: content, source: 'dashboard' } 
             }));
         } catch (error) {
             console.error('Error saving daily notes:', error);
@@ -145,9 +145,9 @@ export default function Dashboard() {
                 await StickyNotes.create({ content });
             }
             
-            // Notify Computer page about the change
+            // Notify Computer page about the change (with source identifier)
             window.dispatchEvent(new CustomEvent('stickyNotesUpdated', { 
-                detail: { content: content } 
+                detail: { content: content, source: 'dashboard' } 
             }));
         } catch (error) {
             console.error('Error saving sticky notes:', error);
@@ -436,43 +436,54 @@ export default function Dashboard() {
         };
     }, [loadTodayEvents, currentComputerSession]);
 
-    // Reduced interval frequency and added conditions
-    useEffect(() => {
-        // Much longer interval to reduce server load
-        const interval = setInterval(() => {
-            // Only reload if we're not already loading to prevent race conditions
-            if (!isLoadingData) {
-                loadTodayEvents();
-            }
-        }, 120000); // Changed from 30 seconds to 2 minutes
-
-        return () => clearInterval(interval);
-    }, [loadTodayEvents, isLoadingData]); // Depend on loadTodayEvents and isLoadingData
+    // Removed automatic refresh interval to prevent infinite loops
+    // Data will only refresh when needed (user actions, events, etc.)
 
     // Listen for daily notes changes from Computer page
     useEffect(() => {
+        let timeoutId;
+        
         const handleDailyNotesChange = (event) => {
-            // Only update if the change is for today's date
+            // Only update if the change is for today's date and not from this page
             const todayStr = moment().format('YYYY-MM-DD');
-            if (event.detail && event.detail.date === todayStr) {
-                console.log('🔵 Dashboard received daily notes update for today:', event.detail.content);
-                setDailyNotes(event.detail.content);
+            if (event.detail && event.detail.date === todayStr && event.detail.source !== 'dashboard') {
+                // Debounce to prevent rapid updates
+                clearTimeout(timeoutId);
+                timeoutId = setTimeout(() => {
+                    console.log('🔵 Dashboard received daily notes update for today:', event.detail.content);
+                    setDailyNotes(event.detail.content);
+                }, 100);
             }
         };
 
         window.addEventListener('dailyNotesUpdated', handleDailyNotesChange);
-        return () => window.removeEventListener('dailyNotesUpdated', handleDailyNotesChange);
+        return () => {
+            window.removeEventListener('dailyNotesUpdated', handleDailyNotesChange);
+            clearTimeout(timeoutId);
+        };
     }, []);
 
     // Listen for sticky notes changes from Computer page
     useEffect(() => {
+        let timeoutId;
+        
         const handleStickyNotesChange = (event) => {
-            console.log('🔵 Dashboard received sticky notes update:', event.detail.content);
-            setStickyNotes(event.detail.content);
+            // Only update if not from this page
+            if (event.detail && event.detail.source !== 'dashboard') {
+                // Debounce to prevent rapid updates
+                clearTimeout(timeoutId);
+                timeoutId = setTimeout(() => {
+                    console.log('🔵 Dashboard received sticky notes update:', event.detail.content);
+                    setStickyNotes(event.detail.content);
+                }, 100);
+            }
         };
 
         window.addEventListener('stickyNotesUpdated', handleStickyNotesChange);
-        return () => window.removeEventListener('stickyNotesUpdated', handleStickyNotesChange);
+        return () => {
+            window.removeEventListener('stickyNotesUpdated', handleStickyNotesChange);
+            clearTimeout(timeoutId);
+        };
     }, []);
 
     // מערכת התראות למיקוד מתוזמן
