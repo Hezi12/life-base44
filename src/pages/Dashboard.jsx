@@ -445,52 +445,11 @@ export default function Dashboard() {
     // Removed automatic refresh interval to prevent infinite loops
     // Data will only refresh when needed (user actions, events, etc.)
 
-    // Listen for daily notes changes from Computer page
-    useEffect(() => {
-        let timeoutId;
-        
-        const handleDailyNotesChange = (event) => {
-            // Only update if the change is for today's date and not from this page
-            const todayStr = moment().format('YYYY-MM-DD');
-            if (event.detail && event.detail.date === todayStr && event.detail.source !== 'dashboard') {
-                // Debounce to prevent rapid updates
-                clearTimeout(timeoutId);
-                timeoutId = setTimeout(() => {
-                    console.log('🔵 Dashboard received daily notes update for today:', event.detail.content);
-                    setDailyNotes(event.detail.content);
-                }, 100);
-            }
-        };
+    // Removed daily notes event listener to prevent typing interference
+    // Dashboard will only update notes when user explicitly changes them
 
-        window.addEventListener('dailyNotesUpdated', handleDailyNotesChange);
-        return () => {
-            window.removeEventListener('dailyNotesUpdated', handleDailyNotesChange);
-            clearTimeout(timeoutId);
-        };
-    }, []);
-
-    // Listen for sticky notes changes from Computer page
-    useEffect(() => {
-        let timeoutId;
-        
-        const handleStickyNotesChange = (event) => {
-            // Only update if not from this page
-            if (event.detail && event.detail.source !== 'dashboard') {
-                // Debounce to prevent rapid updates
-                clearTimeout(timeoutId);
-                timeoutId = setTimeout(() => {
-                    console.log('🔵 Dashboard received sticky notes update:', event.detail.content);
-                    setStickyNotes(event.detail.content);
-                }, 100);
-            }
-        };
-
-        window.addEventListener('stickyNotesUpdated', handleStickyNotesChange);
-        return () => {
-            window.removeEventListener('stickyNotesUpdated', handleStickyNotesChange);
-            clearTimeout(timeoutId);
-        };
-    }, []);
+    // Removed sticky notes event listener to prevent typing interference
+    // Dashboard will only update notes when user explicitly changes them
 
     // מערכת התראות למיקוד מתוזמן
     useEffect(() => {
