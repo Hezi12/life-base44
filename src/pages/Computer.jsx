@@ -110,16 +110,8 @@ export default function Computer() {
                 await new Promise(resolve => setTimeout(resolve, 100));
 
                 // Load daily notes
-                console.log('🟡 Loading daily notes for date:', dateStr);
-                console.log('🟡 Current date object:', currentDate.format());
                 const dailyNotesData = await DailyNotes.filter({ date: dateStr });
-                console.log('🟡 Found daily notes:', dailyNotesData.length, 'entries');
-                if (dailyNotesData.length > 0) {
-                    console.log('🟡 Daily notes content:', `"${dailyNotesData[0].content}"`);
-                    console.log('🟡 Daily notes date from DB:', dailyNotesData[0].date);
-                }
                 setDailyNotes(dailyNotesData[0]?.content || '');
-                console.log('🟡 Set daily notes to:', `"${dailyNotesData[0]?.content || ''}"`);
 
             } catch (error) {
                 console.error('Error loading data:', error);
@@ -187,50 +179,28 @@ export default function Computer() {
     // Save notes when leaving the page
     useEffect(() => {
         const handleBeforeUnload = () => {
-            console.log('🔵 handleBeforeUnload triggered');
             const dateStr = currentDate.format('YYYY-MM-DD');
-            console.log('🔵 Current date being used for save:', dateStr);
-            console.log('🔵 Current date object:', currentDate.format());
             
-            console.log('🔵 Saving on page unload - Daily notes:', `"${dailyNotes}"`, 'Sticky notes:', `"${stickyNotes}"`);
-            
-            // שמירת הערות יומיות - כולל מחיקה (מחרוזת ריקה)
-            console.log('🔵 About to save daily notes on unload. Content:', `"${dailyNotes}"`);
-            console.log('🔵 Content length:', dailyNotes.length);
-            console.log('🔵 Is empty?', dailyNotes === '');
-            
+            // שמירת הערות יומיות
             DailyNotes.filter({ date: dateStr }).then(existingNotes => {
-                console.log('🔵 Found existing daily notes:', existingNotes.length);
                 if (existingNotes.length > 0) {
-                    console.log('🔵 Updating daily notes on unload. Old:', `"${existingNotes[0].content}"`, 'New:', `"${dailyNotes}"`);
-                    DailyNotes.update(existingNotes[0].id, { content: dailyNotes }).then(() => {
-                        console.log('🔵 Daily notes updated on unload successfully');
-                        // Verify the update
-                        return DailyNotes.filter({ date: dateStr });
-                    }).then(verifyNotes => {
-                        console.log('🔍 Verification after unload update:', `"${verifyNotes[0]?.content}"`);
-                    });
+                    DailyNotes.update(existingNotes[0].id, { content: dailyNotes });
                 } else if (dailyNotes.trim()) {
-                    console.log('🔵 Creating daily notes on unload:', `"${dailyNotes}"`);
                     DailyNotes.create({ date: dateStr, content: dailyNotes });
-                } else {
-                    console.log('🔵 No existing notes and no content to create');
                 }
             }).catch(error => {
-                console.error('❌ Error saving daily notes on unload:', error);
+                console.error('Error saving daily notes on unload:', error);
             });
             
-            // שמירת הערות קבועות - כולל מחיקה (מחרוזת ריקה)
+            // שמירת הערות קבועות
             StickyNotes.list().then(existingNotes => {
                 if (existingNotes.length > 0) {
-                    console.log('🔵 Updating sticky notes on unload. Old:', `"${existingNotes[0].content}"`, 'New:', `"${stickyNotes}"`);
                     StickyNotes.update(existingNotes[0].id, { content: stickyNotes });
                 } else if (stickyNotes.trim()) {
-                    console.log('🔵 Creating sticky notes on unload:', `"${stickyNotes}"`);
                     StickyNotes.create({ content: stickyNotes });
                 }
             }).catch(error => {
-                console.error('❌ Error saving sticky notes on unload:', error);
+                console.error('Error saving sticky notes on unload:', error);
             });
         };
 
@@ -238,40 +208,21 @@ export default function Computer() {
 
         return () => {
             window.removeEventListener('beforeunload', handleBeforeUnload);
-            console.log('🔵 Component unmounting, saving notes...');
             handleBeforeUnload();
         };
     }, [currentDate, dailyNotes, stickyNotes]);
 
     // Save functions for manual saves (onBlur)
     const saveDailyNotes = async () => {
-        console.log('🟡 saveDailyNotes called with content:', `"${dailyNotes}"`);
-        console.log('🟡 Content length:', dailyNotes.length);
-        console.log('🟡 Content trimmed:', `"${dailyNotes.trim()}"`);
-        console.log('🟡 Is empty string?', dailyNotes === '');
-        
         try {
             const dateStr = currentDate.format('YYYY-MM-DD');
-            console.log('🟡 saveDailyNotes - Current date being used:', dateStr);
-            console.log('🟡 saveDailyNotes - Current date object:', currentDate.format());
             const existingNotes = await DailyNotes.filter({ date: dateStr });
-            console.log('🟡 Existing daily notes found:', existingNotes.length);
 
             if (existingNotes.length > 0) {
-                console.log('🟢 Updating daily notes. Old content:', `"${existingNotes[0].content}"`, 'New content:', `"${dailyNotes}"`);
                 await DailyNotes.update(existingNotes[0].id, { content: dailyNotes });
-                console.log('✅ Daily notes updated successfully');
-                
-                // Verify the update
-                const verifyNotes = await DailyNotes.filter({ date: dateStr });
-                console.log('🔍 Verification - notes after update:', `"${verifyNotes[0]?.content}"`);
             } else {
-                if (dailyNotes.trim()) { // יצירה חדשה רק אם יש תוכן
-                    console.log('🟢 Creating new daily notes with content:', `"${dailyNotes}"`);
+                if (dailyNotes.trim()) {
                     await DailyNotes.create({ date: dateStr, content: dailyNotes });
-                    console.log('✅ Daily notes created successfully');
-                } else {
-                    console.log('🟠 No content to create new daily notes with');
                 }
             }
             
@@ -288,23 +239,14 @@ export default function Computer() {
     };
 
     const saveStickyNotes = async () => {
-        console.log('🟡 saveStickyNotes called with content:', `"${stickyNotes}"`);
-        
         try {
             const existingNotes = await StickyNotes.list();
-            console.log('🟡 Existing sticky notes found:', existingNotes.length);
 
             if (existingNotes.length > 0) {
-                console.log('🟢 Updating sticky notes. Old content:', `"${existingNotes[0].content}"`, 'New content:', `"${stickyNotes}"`);
                 await StickyNotes.update(existingNotes[0].id, { content: stickyNotes });
-                console.log('✅ Sticky notes updated successfully');
             } else {
-                if (stickyNotes.trim()) { // יצירה חדשה רק אם יש תוכן
-                    console.log('🟢 Creating new sticky notes with content:', `"${stickyNotes}"`);
+                if (stickyNotes.trim()) {
                     await StickyNotes.create({ content: stickyNotes });
-                    console.log('✅ Sticky notes created successfully');
-                } else {
-                    console.log('🟠 No content to create new sticky notes with');
                 }
             }
             
@@ -339,13 +281,6 @@ export default function Computer() {
         const endDateTime = moment.utc(`${dateStr} ${newTopicEnd}`, 'YYYY-MM-DD HH:mm').toISOString();
 
         // לוגים מפורטים לדיבוג timezone
-        console.log('🔍 === TOPIC CREATION DEBUG (FINAL) ===');
-        console.log('📅 Current Date:', currentDate.format('YYYY-MM-DD HH:mm:ss'));
-        console.log('⏰ Input Start Time:', newTopicStart);
-        console.log('⏰ Input End Time:', newTopicEnd);
-        console.log('🕐 Start DateTime to save:', startDateTime);
-        console.log('🕐 End DateTime to save:', endDateTime);
-        console.log('🌍 Timezone:', Intl.DateTimeFormat().resolvedOptions().timeZone);
         // חישוב duration נכון ב-UTC עם טיפול בחצות
         const startUTC = moment.utc(`${dateStr} ${newTopicStart}`, 'YYYY-MM-DD HH:mm');
         let endUTC = moment.utc(`${dateStr} ${newTopicEnd}`, 'YYYY-MM-DD HH:mm');
@@ -353,20 +288,10 @@ export default function Computer() {
         // אם זמן הסיום קטן מזמן ההתחלה, זה אומר שעברנו חצות
         if (endUTC.isBefore(startUTC)) {
             endUTC = endUTC.add(1, 'day');
-            console.log('🌙 Midnight crossing detected in topic creation!');
-            console.log('   Original end time:', moment.utc(`${dateStr} ${newTopicEnd}`, 'YYYY-MM-DD HH:mm').format('YYYY-MM-DD HH:mm'));
-            console.log('   Adjusted end time:', endUTC.format('YYYY-MM-DD HH:mm'));
         }
         
         const durationSeconds = endUTC.diff(startUTC, 'seconds');
         const durationMinutes = Math.round(durationSeconds / 60);
-        
-        console.log('⏱️ Duration calculation (FIXED):');
-        console.log('   Start UTC:', startUTC.format('YYYY-MM-DD HH:mm:ss'));
-        console.log('   End UTC:', endUTC.format('YYYY-MM-DD HH:mm:ss'));
-        console.log('   Duration (seconds):', durationSeconds);
-        console.log('   Duration (minutes):', durationMinutes);
-        console.log('💡 Strategy: Saving local time AS UTC to avoid timezone issues');
 
         try {
             const topicData = {
@@ -381,7 +306,6 @@ export default function Computer() {
                 event_id: selectedSessionId
             };
 
-            console.log('💾 Topic Data to Save:', topicData);
             await WorkTopic.create(topicData);
             
             // Refresh topics
@@ -405,18 +329,6 @@ export default function Computer() {
 
     const handleEditTopic = (topic) => {
         // לוגים מפורטים לדיבוג timezone - טעינה לעריכה
-        console.log('🔍 === TOPIC EDIT LOADING DEBUG ===');
-        console.log('📋 Original Topic Object:', topic);
-        console.log('🕐 Original start_time:', topic.start_time);
-        console.log('🕐 Original end_time:', topic.end_time);
-        console.log('🌍 Moment parsing start_time:', moment(topic.start_time).format('YYYY-MM-DD HH:mm:ss'));
-        console.log('🌍 Moment parsing end_time:', moment(topic.end_time).format('YYYY-MM-DD HH:mm:ss'));
-        console.log('⏰ OLD Formatted for input start:', moment(topic.start_time).format('HH:mm'));
-        console.log('⏰ OLD Formatted for input end:', moment(topic.end_time).format('HH:mm'));
-        console.log('⏰ FIXED Formatted for input start:', moment.utc(topic.start_time).format('HH:mm'));
-        console.log('⏰ FIXED Formatted for input end:', moment.utc(topic.end_time).format('HH:mm'));
-        console.log('🌐 UTC offset:', moment().utcOffset());
-        console.log('🌐 Timezone:', Intl.DateTimeFormat().resolvedOptions().timeZone);
 
         setEditingTopic(topic);
         setNewTopicSubject(topic.subject_id);
@@ -443,21 +355,6 @@ export default function Computer() {
         const startDateTime = moment.utc(`${dateStr} ${newTopicStart}`, 'YYYY-MM-DD HH:mm').toISOString();
         const endDateTime = moment.utc(`${dateStr} ${newTopicEnd}`, 'YYYY-MM-DD HH:mm').toISOString();
 
-        // לוגים מפורטים לדיבוג timezone - עדכון
-        console.log('🔍 === TOPIC UPDATE DEBUG (FIXED) ===');
-        console.log('📅 Current Date:', currentDate.format('YYYY-MM-DD HH:mm:ss'));
-        console.log('⏰ Input Start Time:', newTopicStart);
-        console.log('⏰ Input End Time:', newTopicEnd);
-        console.log('🕐 Start Moment Object:', startMoment.format('YYYY-MM-DD HH:mm:ss'));
-        console.log('🕐 End Moment Object:', endMoment.format('YYYY-MM-DD HH:mm:ss'));
-        console.log('🕐 Constructed Start DateTime:', startDateTime);
-        console.log('🕐 Constructed End DateTime:', endDateTime);
-        console.log('🔄 Original Topic Times:', {
-            start: editingTopic.start_time,
-            end: editingTopic.end_time,
-            startFormatted: moment(editingTopic.start_time).format('YYYY-MM-DD HH:mm:ss'),
-            endFormatted: moment(editingTopic.end_time).format('YYYY-MM-DD HH:mm:ss')
-        });
         
         // חישוב duration נכון ב-UTC לעדכון עם טיפול בחצות
         const startUTC = moment.utc(`${dateStr} ${newTopicStart}`, 'YYYY-MM-DD HH:mm');
@@ -466,17 +363,10 @@ export default function Computer() {
         // אם זמן הסיום קטן מזמן ההתחלה, זה אומר שעברנו חצות
         if (endUTC.isBefore(startUTC)) {
             endUTC = endUTC.add(1, 'day');
-            console.log('🌙 Midnight crossing detected in topic update!');
-            console.log('   Original end time:', moment.utc(`${dateStr} ${newTopicEnd}`, 'YYYY-MM-DD HH:mm').format('YYYY-MM-DD HH:mm'));
-            console.log('   Adjusted end time:', endUTC.format('YYYY-MM-DD HH:mm'));
         }
         
         const durationSeconds = endUTC.diff(startUTC, 'seconds');
         const durationMinutes = Math.round(durationSeconds / 60);
-        
-        console.log('⏱️ Update Duration calculation (FIXED):');
-        console.log('   Duration (seconds):', durationSeconds);
-        console.log('   Duration (minutes):', durationMinutes);
 
         try {
             const updatedData = {
@@ -489,7 +379,6 @@ export default function Computer() {
                 duration_minutes: durationMinutes,
             };
 
-            console.log('💾 Updated Topic Data to Save:', updatedData);
             await WorkTopic.update(editingTopic.id, updatedData);
             
             // Refresh topics
@@ -674,42 +563,20 @@ export default function Computer() {
                                 </CardHeader>
                                 <CardContent className="space-y-4 text-right">
                                 {(() => {
-                                    console.log('🔍 === DETAILED SUMMARY DEBUG ===');
-                                    
-                                    // חישוב סטטיסטיקות עם לוגים מפורטים
-                                    console.log('📊 Work Sessions:', workSessions.length);
-                                    workSessions.forEach((session, index) => {
-                                        console.log(`   Session ${index + 1}:`, session.title);
-                                        console.log(`   Start: ${session.start_time}`);
-                                        console.log(`   End: ${session.end_time}`);
-                                    });
-                                    
+                                    // חישוב סטטיסטיקות
                                     const totalWorkMinutes = workSessions.reduce((sum, session) => {
                                         const startTimeUTC = moment.utc(session.start_time);
                                         const endTimeUTC = moment.utc(session.end_time);
                                         const durationSeconds = endTimeUTC.diff(startTimeUTC, 'seconds');
                                         const duration = Math.round(durationSeconds / 60);
-                                        console.log(`   Duration calculation: ${durationSeconds}s = ${duration} minutes`);
                                         return sum + duration;
                                     }, 0);
-                                    
-                                    console.log('📊 Total Work Minutes:', totalWorkMinutes);
-                                    console.log('📊 Total Work Hours:', Math.floor(totalWorkMinutes / 60), ':', (totalWorkMinutes % 60).toString().padStart(2, '0'));
-
-                                    console.log('📊 Work Topics:', workTopics.length);
-                                    workTopics.forEach((topic, index) => {
-                                        console.log(`   Topic ${index + 1}:`, topic.topic);
-                                        console.log(`   Duration: ${topic.duration_minutes} minutes`);
-                                        console.log(`   Start: ${topic.start_time}`);
-                                        console.log(`   End: ${topic.end_time}`);
-                                    });
 
                                     const totalTopicsMinutes = workTopics.reduce((sum, topic) => {
                                         let duration = topic.duration_minutes || 0;
                                         
                                         // תיקון נושאים עם duration שלילי (בעיית חצות)
                                         if (duration < 0) {
-                                            console.log(`🔧 Fixing negative duration for "${topic.topic}": ${duration} minutes`);
                                             const startUTC = moment.utc(topic.start_time);
                                             const endUTC = moment.utc(topic.end_time);
                                             
@@ -718,16 +585,11 @@ export default function Computer() {
                                                 const correctedEndUTC = endUTC.add(1, 'day');
                                                 const correctedDurationSeconds = correctedEndUTC.diff(startUTC, 'seconds');
                                                 duration = Math.round(correctedDurationSeconds / 60);
-                                                console.log(`   Corrected duration: ${duration} minutes`);
                                             }
                                         }
                                         
-                                        console.log(`   Adding topic "${topic.topic}": ${duration} minutes`);
                                         return sum + duration;
                                     }, 0);
-                                    
-                                    console.log('📊 Total Topics Minutes:', totalTopicsMinutes);
-                                    console.log('📊 Total Topics Hours:', Math.floor(totalTopicsMinutes / 60), ':', (totalTopicsMinutes % 60).toString().padStart(2, '0'));
 
                                     const topicsSummary = {};
                                     workTopics.forEach(topic => {
@@ -736,7 +598,6 @@ export default function Computer() {
                                         
                                         // תיקון נושאים עם duration שלילי (בעיית חצות)
                                         if (duration < 0) {
-                                            console.log(`🔧 Fixing negative duration in summary for "${topicName}": ${duration} minutes`);
                                             const startUTC = moment.utc(topic.start_time);
                                             const endUTC = moment.utc(topic.end_time);
                                             
@@ -745,36 +606,23 @@ export default function Computer() {
                                                 const correctedEndUTC = endUTC.add(1, 'day');
                                                 const correctedDurationSeconds = correctedEndUTC.diff(startUTC, 'seconds');
                                                 duration = Math.round(correctedDurationSeconds / 60);
-                                                console.log(`   Corrected duration in summary: ${duration} minutes`);
                                             }
                                         }
                                         
-                                        console.log(`   Processing topic "${topicName}": ${duration} minutes`);
-                                        
                                         if (!topicsSummary[topicName]) {
                                             topicsSummary[topicName] = 0;
-                                            console.log(`   Initializing "${topicName}" to 0`);
                                         }
                                         topicsSummary[topicName] += duration;
-                                        console.log(`   Updated "${topicName}" to: ${topicsSummary[topicName]} minutes`);
                                     });
                                     
-                                    console.log('📊 Final Topics Summary:', topicsSummary);
                                     
-                                    // חישוב אחוזים עם לוגים
+                                    // חישוב אחוזים
                                     Object.entries(topicsSummary).forEach(([topicName, minutes]) => {
                                         const percentage = totalTopicsMinutes > 0 ? Math.round((minutes / totalTopicsMinutes) * 100) : 0;
                                         const hours = Math.floor(minutes / 60);
                                         const mins = minutes % 60;
                                         const timeString = `${hours}:${mins.toString().padStart(2, '0')}`;
-                                        
-                                        console.log(`📊 Topic "${topicName}":`);
-                                        console.log(`   Minutes: ${minutes}`);
-                                        console.log(`   Time String: ${timeString}`);
-                                        console.log(`   Percentage: ${percentage}% (${minutes}/${totalTopicsMinutes})`);
                                     });
-                                    
-                                    console.log('🔚 === END SUMMARY DEBUG ===');
 
                                     return (
                                         <>
@@ -793,26 +641,14 @@ export default function Computer() {
                                             {Object.keys(topicsSummary).length > 0 && (
                                         <div className="space-y-3">
                                                     {Object.entries(topicsSummary).map(([topicName, minutes]) => {
-                                                        console.log(`🎨 === RENDERING TOPIC "${topicName}" ===`);
-                                                        console.log(`   Raw minutes: ${minutes}`);
-                                                        console.log(`   Total topics minutes: ${totalTopicsMinutes}`);
-                                                        
                                                         const percentage = totalTopicsMinutes > 0 ? Math.round((minutes / totalTopicsMinutes) * 100) : 0;
-                                                        console.log(`   Calculated percentage: ${percentage}%`);
-                                                        
                                                         const hours = Math.floor(minutes / 60);
                                                         const mins = minutes % 60;
                                                         const timeString = `${hours}:${mins.toString().padStart(2, '0')}`;
-                                                        console.log(`   Time string: ${timeString} (${hours}h ${mins}m)`);
                                                         
                                                 const subjectData = workSubjects.find(s => s.name === topicName) || {};
-                                                        console.log(`   Subject data:`, subjectData);
-                                                        
                                                 const IconComponent = getIconComponent(subjectData.icon);
                                                 const subjectColor = subjectData.color || '#6b7280';
-                                                        console.log(`   Icon: ${subjectData.icon}, Color: ${subjectColor}`);
-                                                        
-                                                        console.log(`🎨 === END RENDERING TOPIC "${topicName}" ===`);
                                                 
                                                 return (
                                                     <div key={topicName} className="flex items-center justify-between text-sm">
@@ -860,30 +696,16 @@ export default function Computer() {
                                                                 {(() => {
                                                                     const displayStart = moment(session.start_time).format('HH:mm');
                                                                     const displayEnd = moment(session.end_time).format('HH:mm');
-                                                                    console.log('🔍 === TIME DISPLAY DEBUG ===');
-                                                                    console.log('📅 Session:', session.title);
-                                                                    console.log('⏰ Displaying as:', `${displayStart} - ${displayEnd}`);
                                                                     return `${displayStart} - ${displayEnd}`;
                                                                 })()}
                                                                 <span className="mr-2">
                                                                     ({(() => {
-                                                                        console.log('🔍 === INDIVIDUAL SESSION DISPLAY DEBUG (FIXED) ===');
-                                                                        console.log('📅 Session:', session.title);
-                                                                        console.log('🕐 RAW start_time:', session.start_time);
-                                                                        console.log('🕐 RAW end_time:', session.end_time);
-                                                                        
                                                                         // חישוב נכון על בסיס UTC עם עיגול
                                                                         const startTimeUTC = moment.utc(session.start_time);
                                                                         const endTimeUTC = moment.utc(session.end_time);
                                                                         
                                                                         const durationSeconds = endTimeUTC.diff(startTimeUTC, 'seconds');
                                                                         const duration = Math.round(durationSeconds / 60);
-                                                                        
-                                                                        console.log('🌍 UTC start:', startTimeUTC.format('YYYY-MM-DD HH:mm:ss'));
-                                                                        console.log('🌍 UTC end:', endTimeUTC.format('YYYY-MM-DD HH:mm:ss'));
-                                                                        console.log('📊 CORRECT UTC diff (seconds):', durationSeconds);
-                                                                        console.log('📊 CORRECT UTC diff (minutes, raw):', durationSeconds / 60);
-                                                                        console.log('📊 CORRECT UTC diff (minutes, rounded):', duration);
                                                                         
                                                                         return duration;
                                                                     })()} דקות)
@@ -901,12 +723,6 @@ export default function Computer() {
                                                                 const sessionEnd = moment.utc(session.end_time).local().format('HH:mm');
                                                                 setNewTopicStart(sessionStart);
                                                                 setNewTopicEnd(sessionEnd);
-                                                                
-                                                                console.log('🔍 === SMART DEFAULTS ===');
-                                                                console.log('📅 Session:', session.title);
-                                                                console.log('⏰ Session Start:', sessionStart);
-                                                                console.log('⏰ Session End:', sessionEnd);
-                                                                console.log('🎯 Setting as defaults for new topic');
                                                                 
                                                                 setIsAddingTopic(true);
                                                             }}
@@ -931,14 +747,6 @@ export default function Computer() {
                                                                                         // תיקון: פרסור הזמן כ-UTC (זה בעצם הזמן המקומי שנשמר כUTC)
                                                                                         const startFormatted = moment.utc(topic.start_time).format('HH:mm');
                                                                                         const endFormatted = moment.utc(topic.end_time).format('HH:mm');
-                                                                                        console.log('🔍 === DISPLAY TIME DEBUG (FINAL FIX) ===');
-                                                                                        console.log('📋 Topic:', topic.topic);
-                                                                                        console.log('🕐 Raw start_time:', topic.start_time);
-                                                                                        console.log('🕐 Raw end_time:', topic.end_time);
-                                                                                        console.log('🌍 UTC start parsed:', moment.utc(topic.start_time).format('YYYY-MM-DD HH:mm:ss'));
-                                                                                        console.log('🌍 UTC end parsed:', moment.utc(topic.end_time).format('YYYY-MM-DD HH:mm:ss'));
-                                                                                        console.log('⏰ Final formatted start:', startFormatted);
-                                                                                        console.log('⏰ Final formatted end:', endFormatted);
                                                                                         return `${startFormatted} - ${endFormatted}`;
                                                                                     })()}
                                                                                 </span>
@@ -1013,7 +821,6 @@ export default function Computer() {
                                         setDailyNotes(e.target.value);
                                     }}
                                     onBlur={() => {
-                                        console.log('🟨 Daily notes onBlur triggered');
                                         saveDailyNotes();
                                     }}
                                     placeholder="הערות יומיות..."
@@ -1041,7 +848,6 @@ export default function Computer() {
                                         setStickyNotes(e.target.value);
                                     }}
                                     onBlur={() => {
-                                        console.log('🟨 Sticky notes onBlur triggered');
                                         saveStickyNotes();
                                     }}
                                     placeholder="הערות קבועות..."

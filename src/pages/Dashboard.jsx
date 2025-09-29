@@ -328,19 +328,7 @@ export default function Dashboard() {
                     
                     // Only load notes if user is not currently typing
                     if (!isTypingDailyNotes) {
-                        // Load notes based on current date (always current date for Dashboard)
-                        const notesDateStr = dateStr; // Always use current date for Dashboard
-                        
-                        console.log('🔵 Dashboard loading daily notes for date:', notesDateStr);
-                        console.log('🔵 Computer session date:', computerSession ? moment(computerSession.start_time).format('YYYY-MM-DD') : 'No session');
-                        console.log('🔵 Current date:', dateStr);
-                        
-                        const dailyNotesData = await DailyNotes.filter({ date: notesDateStr });
-                        console.log('🔵 Dashboard found daily notes:', dailyNotesData.length, 'entries');
-                        if (dailyNotesData.length > 0) {
-                            console.log('🔵 Dashboard daily notes content:', `"${dailyNotesData[0].content}"`);
-                            console.log('🔵 Dashboard daily notes date from DB:', dailyNotesData[0].date);
-                        }
+                        const dailyNotesData = await DailyNotes.filter({ date: dateStr });
                         setDailyNotes(dailyNotesData[0]?.content || '');
                     }
                     
@@ -495,7 +483,6 @@ export default function Dashboard() {
 המערכת שלך`
                         });
                         
-                        console.log(`📧 Focus notification sent for ${scheduledTime.format('HH:mm')}`);
                     }
                 }
             } catch (error) {

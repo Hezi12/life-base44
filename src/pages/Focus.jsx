@@ -147,7 +147,6 @@ export default function NewFocus() {
 המערכת שלך`
                         });
                         
-                        console.log(`📧 Focus notification sent for ${scheduledTime.format('HH:mm')}`);
                     }
                 }
             } catch (error) {

@@ -102,7 +102,6 @@ export default function NewActiveFocusSession() {
 המערכת שלך`
                         });
                         
-                        console.log(`📧 Focus notification sent for ${scheduledTime.format('HH:mm')}`);
                     }
                 }
             } catch (error) {
@@ -178,7 +177,6 @@ export default function NewActiveFocusSession() {
             };
 
             await FocusSession.create(sessionData);
-            console.log('Focus session saved:', sessionData);
         } catch (error) {
             console.error('Error saving session:', error);
         }
