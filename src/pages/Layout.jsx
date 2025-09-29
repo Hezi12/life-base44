@@ -355,51 +355,55 @@ export default function Layout({ children, currentPageName }) {
       {/* Mobile Menu */}
       <div className="md:hidden">
         {/* Mobile Toolbar */}
-        <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-200 shadow-lg">
-          <div className="flex items-center justify-between px-4 py-2">
+        <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-200 shadow-lg" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+          <div className="flex items-center justify-between px-4 py-3">
             {/* Left side - Navigation */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               <button 
                 onClick={() => setIsMobileMenuOpen(true)}
-                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                className="p-3 rounded-xl hover:bg-gray-100 transition-colors touch-manipulation"
                 title="תפריט"
+                style={{ minWidth: '44px', minHeight: '44px' }}
               >
-                <Menu className="w-5 h-5 text-gray-700" />
+                <Menu className="w-6 h-6 text-gray-700" />
               </button>
 
               {!isHomePage && (
                 <Link 
                   to={createPageUrl("Dashboard")}
-                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                  className="p-3 rounded-xl hover:bg-gray-100 transition-colors touch-manipulation"
                   title="דף הבית"
+                  style={{ minWidth: '44px', minHeight: '44px' }}
                 >
-                  <Home className="w-5 h-5 text-gray-700" />
+                  <Home className="w-6 h-6 text-gray-700" />
                 </Link>
               )}
             </div>
 
             {/* Right side - Quick actions */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               <button
                 onClick={() => setIsQuickScheduleOpen(true)}
-                className="p-2 rounded-lg hover:bg-green-50 transition-colors"
+                className="p-3 rounded-xl hover:bg-green-50 transition-colors touch-manipulation"
                 title="תכנון מהיר"
+                style={{ minWidth: '44px', minHeight: '44px' }}
               >
-                <Calendar className="w-5 h-5 text-green-600" />
+                <Calendar className="w-6 h-6 text-green-600" />
               </button>
 
               {/* Focus button with time */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <Link
                   to={createPageUrl("ActiveFocusSession")}
-                  className="p-2 rounded-lg hover:bg-blue-50 transition-colors"
+                  className="p-3 rounded-xl hover:bg-blue-50 transition-colors touch-manipulation"
                   title="מיקוד"
+                  style={{ minWidth: '44px', minHeight: '44px' }}
                 >
-                  <Target className="w-5 h-5 text-blue-600" />
+                  <Target className="w-6 h-6 text-blue-600" />
                 </Link>
                 
                 {/* Next focus time - minimal design */}
-                <div className="text-xs text-gray-500 font-mono">
+                <div className="text-sm text-gray-500 font-mono px-2 py-1 bg-gray-50 rounded-lg">
                   {nextFocusTime}
                 </div>
               </div>
@@ -414,26 +418,32 @@ export default function Layout({ children, currentPageName }) {
           <div className="absolute inset-0 bg-black/20"></div>
           
           <div 
-            className={`absolute top-0 right-0 h-full w-64 bg-gray-50 shadow-xl p-6 flex flex-col transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}
+            className={`absolute top-0 right-0 h-full w-72 bg-gray-50 shadow-xl p-6 flex flex-col transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}
             onClick={(e) => e.stopPropagation()}
+            style={{ paddingTop: 'env(safe-area-inset-top)' }}
           >
-            <div className="flex justify-end items-center mb-10">
-              <button onClick={() => setIsMobileMenuOpen(false)}>
+            <div className="flex justify-end items-center mb-8">
+              <button 
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="p-2 rounded-lg hover:bg-gray-200 transition-colors touch-manipulation"
+                style={{ minWidth: '44px', minHeight: '44px' }}
+              >
                 <X className="w-6 h-6 text-gray-600"/>
               </button>
             </div>
             
-            <div className="flex flex-col space-y-2">
+            <div className="flex flex-col space-y-3">
               {navigationItems.map((item) => (
                 <Link
                   key={item.title}
                   to={item.url}
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className={`flex items-center gap-4 p-3 rounded-xl text-lg font-medium transition-colors ${
+                  className={`flex items-center gap-4 p-4 rounded-xl text-lg font-medium transition-colors touch-manipulation ${
                     location.pathname === item.url ? 'bg-gray-200 text-black' : 'text-gray-700 hover:bg-gray-200/60'
                   }`}
+                  style={{ minHeight: '56px' }}
                 >
-                  <item.icon className={`w-6 h-6 ${item.color}`} />
+                  <item.icon className={`w-7 h-7 ${item.color}`} />
                   <span>{item.title}</span>
                 </Link>
               ))}
@@ -443,18 +453,19 @@ export default function Layout({ children, currentPageName }) {
             <div className="mt-auto pt-6 border-t border-gray-200">
               <button
                 onClick={handleLogout}
-                className="flex items-center justify-center p-3 rounded-xl text-lg font-medium text-gray-700 hover:bg-gray-200/60 transition-colors w-full"
+                className="flex items-center justify-center p-4 rounded-xl text-lg font-medium text-gray-700 hover:bg-gray-200/60 transition-colors w-full touch-manipulation"
+                style={{ minHeight: '56px' }}
               >
                 <svg 
-                  width="24" 
-                  height="24" 
+                  width="28" 
+                  height="28" 
                   viewBox="0 0 24 24" 
                   fill="none" 
                   stroke="currentColor" 
                   strokeWidth="2" 
                   strokeLinecap="round" 
                   strokeLinejoin="round"
-                  className="w-6 h-6 text-gray-500"
+                  className="w-7 h-7 text-gray-500"
                 >
                   <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
                   <polyline points="16,17 21,12 16,7"/>

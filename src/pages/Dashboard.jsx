@@ -58,29 +58,29 @@ const EventTile = ({ event, isCurrent }) => {
     const bgColor = event.category_color ? `${event.category_color}10` : '#f8fafc';
 
     return (
-        <div className={`p-3 rounded-lg border transition-all duration-200 ${
+        <div className={`p-4 rounded-xl border transition-all duration-200 ${
             isCurrent 
                 ? 'bg-blue-50 border-blue-200 shadow-sm' 
                 : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
         }`}>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
                 {/* אייקון */}
                 <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center"
+                    className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
                     style={{ backgroundColor: bgColor }}
                 >
                     <IconComponent
-                        className="w-4 h-4"
+                        className="w-5 h-5"
                         style={{ color: iconColor }}
                     />
                 </div>
 
                 {/* תוכן האירוע */}
-                <div className="flex-1">
-                    <h4 className={`font-medium text-sm ${isCurrent ? 'text-blue-800' : 'text-gray-800'}`}>
+                <div className="flex-1 min-w-0">
+                    <h4 className={`font-medium text-base leading-tight ${isCurrent ? 'text-blue-800' : 'text-gray-800'}`}>
                         {event.title}
                     </h4>
-                    <p className="text-xs text-gray-500 mt-0.5 font-mono">
+                    <p className="text-sm text-gray-500 mt-1 font-mono">
                         {moment(event.start_time).format('HH:mm')}
                     </p>
                 </div>
@@ -568,7 +568,57 @@ export default function Dashboard() {
         );
     }
 
-    // If there's NO computer session, show completely empty page
+    // Mobile Mode - Always show events and sticky notes
+    if (isMobile) {
+        return (
+            <div className="min-h-screen bg-white p-4 pb-20" dir="rtl" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)' }}>
+                <div className="max-w-md mx-auto space-y-4">
+                    {/* Events */}
+                    <Card className="border-gray-100 shadow-none">
+                        <CardContent className="pt-6">
+                            {mobileEvents.length > 0 ? (
+                                <div className="space-y-3">
+                                    {mobileEvents.map((event, index) => (
+                                        <EventTile
+                                            key={event.id}
+                                            event={event}
+                                            isCurrent={currentEvent && event.id === currentEvent.id}
+                                        />
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-8">
+                                    <Clock className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                                    <p className="text-gray-500 text-sm">אין אירועים מתוכננים היום</p>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    {/* Sticky Notes */}
+                    <Card className="border-gray-100 shadow-none">
+                        <CardHeader className="pb-2 px-4 pt-3 flex-shrink-0">
+                            <div className="flex justify-center">
+                                <Pin className="w-4 h-4 text-gray-600" />
+                            </div>
+                        </CardHeader>
+                        <CardContent className="px-4 pb-4 pt-1 flex-1 min-h-0 flex flex-col">
+                            <Textarea
+                                value={stickyNotes}
+                                onChange={(e) => setStickyNotes(e.target.value)}
+                                onBlur={() => saveStickyNotes(stickyNotes)}
+                                placeholder="הערות קבועות..."
+                                className="flex-1 resize-none border-gray-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300 text-sm"
+                                style={{ minHeight: '200px' }}
+                            />
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
+        );
+    }
+
+    // Desktop Mode - Show computer session mode or empty page
     if (!currentComputerSession) {
         return (
             <div className="min-h-screen bg-white" dir="rtl">
@@ -576,125 +626,76 @@ export default function Dashboard() {
         );
     }
 
-    // If there IS a computer session, show computer session mode
+    // Desktop Mode - Full Layout with computer session
     return (
         <div className="min-h-screen bg-white p-4" dir="rtl">
             <div className="max-w-7xl mx-auto">
-                {isMobile ? (
-                    /* Mobile Mode - Show events and sticky notes */
-                    <div className="min-h-screen bg-white p-4" dir="rtl">
-                        <div className="max-w-md mx-auto space-y-4">
-                            {/* Events */}
-                            <Card className="border-gray-100 shadow-none">
-                                <CardContent className="pt-6">
-                                    {mobileEvents.length > 0 ? (
-                                        <div className="space-y-3">
-                                            {mobileEvents.map((event, index) => (
-                                                <EventTile
-                                                    key={event.id}
-                                                    event={event}
-                                                    isCurrent={currentEvent && event.id === currentEvent.id}
-                                                />
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <div className="text-center py-8">
-                                            <Clock className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                                            <p className="text-gray-500 text-sm">אין אירועים מתוכננים היום</p>
-                                        </div>
-                                    )}
-                                </CardContent>
-                            </Card>
-
-                            {/* Sticky Notes */}
-                            <Card className="border-gray-100 shadow-none">
-                                <CardHeader className="pb-2 px-4 pt-3 flex-shrink-0">
-                                    <div className="flex justify-center">
-                                        <Pin className="w-4 h-4 text-gray-600" />
-                                    </div>
-                                </CardHeader>
-                                <CardContent className="px-4 pb-4 pt-1 flex-1 min-h-0 flex flex-col">
-                                    <Textarea
-                                        value={stickyNotes}
-                                        onChange={(e) => setStickyNotes(e.target.value)}
-                                        onBlur={() => saveStickyNotes(stickyNotes)}
-                                        placeholder="הערות קבועות..."
-                                        className="flex-1 resize-none border-gray-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300 text-sm"
-                                        style={{ minHeight: '200px' }}
-                                    />
-                                </CardContent>
-                            </Card>
-                        </div>
-                    </div>
-                ) : (
-                    /* Desktop Mode - Full Layout */
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-50px)]">
-                        {/* Daily Notes Column */}
-                        <div className="flex flex-col h-full min-h-0">
-                            <Card className="border-gray-100 shadow-none flex-1 min-h-0 flex flex-col">
-                                <CardHeader className="pb-2 px-4 pt-3 flex-shrink-0">
-                                    <div className="flex justify-between items-center">
-                                        <Edit3 className="w-4 h-4 text-gray-600" />
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={handleGetMentorFeedback}
-                                            disabled={isLoadingAI}
-                                            className="text-xs h-6 px-2"
-                                        >
-                                            {isLoadingAI ? "טוען..." : "שאל מנטור AI"}
-                                        </Button>
-                                    </div>
-                                </CardHeader>
-                                <CardContent className="px-4 pb-4 pt-0 flex-1 min-h-0 flex flex-col">
-                                    <Textarea
-                                        value={dailyNotes}
-                                        onChange={(e) => setDailyNotes(e.target.value)}
-                                        onBlur={() => saveDailyNotes(dailyNotes)}
-                                        placeholder="הערות יומיות..."
-                                        className="flex-1 resize-none border-gray-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300 text-sm min-h-0"
-                                    />
-                                </CardContent>
-                            </Card>
-                        </div>
-
-                        {/* Pomodoro & Sticky Notes Column */}
-                        <div className="flex flex-col gap-4 h-full">
-                            {/* Pomodoro Timer */}
-                            <div className="flex justify-center py-2">
-                                <PomodoroTimerAlternative
-                                    sessionStart={currentComputerSession.start_time}
-                                    sessionEnd={currentComputerSession.end_time}
-                                    workTopics={workTopics}
-                                    workSubjects={workSubjects}
-                                    onAddTopic={addWorkTopic}
-                                    onUpdateTopic={updateWorkTopic}
-                                    onDeleteTopic={deleteWorkTopic}
-                                    connectedSessions={currentComputerSession.connected_sessions}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-50px)]">
+                    {/* Daily Notes Column */}
+                    <div className="flex flex-col h-full min-h-0">
+                        <Card className="border-gray-100 shadow-none flex-1 min-h-0 flex flex-col">
+                            <CardHeader className="pb-2 px-4 pt-3 flex-shrink-0">
+                                <div className="flex justify-between items-center">
+                                    <Edit3 className="w-4 h-4 text-gray-600" />
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={handleGetMentorFeedback}
+                                        disabled={isLoadingAI}
+                                        className="text-xs h-6 px-2"
+                                    >
+                                        {isLoadingAI ? "טוען..." : "שאל מנטור AI"}
+                                    </Button>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="px-4 pb-4 pt-0 flex-1 min-h-0 flex flex-col">
+                                <Textarea
+                                    value={dailyNotes}
+                                    onChange={(e) => setDailyNotes(e.target.value)}
+                                    onBlur={() => saveDailyNotes(dailyNotes)}
+                                    placeholder="הערות יומיות..."
+                                    className="flex-1 resize-none border-gray-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300 text-sm min-h-0"
                                 />
-                            </div>
-
-                            {/* Sticky Notes */}
-                            <Card className="border-gray-100 shadow-none flex-1 min-h-0">
-                                <CardHeader className="pb-1 px-4 pt-2 flex-shrink-0">
-                                    <div className="flex justify-center">
-                                        <Pin className="w-4 h-4 text-gray-600" />
-                                    </div>
-                                </CardHeader>
-                                <CardContent className="px-4 pb-4 pt-1 flex-1 min-h-0 flex flex-col">
-                                    <Textarea
-                                        value={stickyNotes}
-                                        onChange={(e) => setStickyNotes(e.target.value)}
-                                        onBlur={() => saveStickyNotes(stickyNotes)}
-                                        placeholder="הערות קבועות..."
-                                        className="flex-1 resize-none border-gray-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300 text-sm"
-                                        style={{ minHeight: '300px' }}
-                                    />
-                                </CardContent>
-                            </Card>
-                        </div>
+                            </CardContent>
+                        </Card>
                     </div>
-                )}
+
+                    {/* Pomodoro & Sticky Notes Column */}
+                    <div className="flex flex-col gap-4 h-full">
+                        {/* Pomodoro Timer */}
+                        <div className="flex justify-center py-2">
+                            <PomodoroTimerAlternative
+                                sessionStart={currentComputerSession.start_time}
+                                sessionEnd={currentComputerSession.end_time}
+                                workTopics={workTopics}
+                                workSubjects={workSubjects}
+                                onAddTopic={addWorkTopic}
+                                onUpdateTopic={updateWorkTopic}
+                                onDeleteTopic={deleteWorkTopic}
+                                connectedSessions={currentComputerSession.connected_sessions}
+                            />
+                        </div>
+
+                        {/* Sticky Notes */}
+                        <Card className="border-gray-100 shadow-none flex-1 min-h-0">
+                            <CardHeader className="pb-1 px-4 pt-2 flex-shrink-0">
+                                <div className="flex justify-center">
+                                    <Pin className="w-4 h-4 text-gray-600" />
+                                </div>
+                            </CardHeader>
+                            <CardContent className="px-4 pb-4 pt-1 flex-1 min-h-0 flex flex-col">
+                                <Textarea
+                                    value={stickyNotes}
+                                    onChange={(e) => setStickyNotes(e.target.value)}
+                                    onBlur={() => saveStickyNotes(stickyNotes)}
+                                    placeholder="הערות קבועות..."
+                                    className="flex-1 resize-none border-gray-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300 text-sm"
+                                    style={{ minHeight: '300px' }}
+                                />
+                            </CardContent>
+                        </Card>
+                    </div>
+                </div>
             </div>
         </div>
     );

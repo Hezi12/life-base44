@@ -236,54 +236,57 @@ export default function NewFocus() {
     };
 
     return (
-        <div className="min-h-screen bg-white flex flex-col" dir="rtl">
+        <div className="min-h-screen bg-white flex flex-col pb-20" dir="rtl" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)' }}>
             {/* Top Icons - Left Side */}
             <div className="absolute top-6 left-6 flex gap-3">
                 <Link 
                     to={createPageUrl("Profile")}
-                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                    className="p-3 hover:bg-gray-100 rounded-xl transition-colors touch-manipulation"
                     title="פרופיל"
+                    style={{ minWidth: '44px', minHeight: '44px' }}
                 >
-                    <User className="w-5 h-5 text-gray-600" />
+                    <User className="w-6 h-6 text-gray-600" />
                 </Link>
                 
                 <button 
-                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                    className="p-3 hover:bg-gray-100 rounded-xl transition-colors touch-manipulation"
                     title="הגדרות"
                     onClick={() => setIsSettingsOpen(true)}
+                    style={{ minWidth: '44px', minHeight: '44px' }}
                 >
-                    <Settings className="w-5 h-5 text-gray-600" />
+                    <Settings className="w-6 h-6 text-gray-600" />
                 </button>
                 
                 <Link 
                     to={createPageUrl("FocusHistory")}
-                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                    className="p-3 hover:bg-gray-100 rounded-xl transition-colors touch-manipulation"
                     title="היסטוריה"
+                    style={{ minWidth: '44px', minHeight: '44px' }}
                 >
-                    <History className="w-5 h-5 text-gray-600" />
+                    <History className="w-6 h-6 text-gray-600" />
                 </Link>
             </div>
 
             {/* Main Content - Center */}
-            <div className="flex-1 flex flex-col items-center justify-center">
+            <div className="flex-1 flex flex-col items-center justify-center px-4">
                 {/* Play Button */}
                 <div>
                     <Link to={createPageUrl("ActiveFocusSession")}>
                         <Button 
                             variant="outline" 
-                            className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-2 border-gray-300 hover:border-blue-500 bg-white hover:bg-blue-50 shadow-sm hover:shadow-md transition-all duration-200 transform hover:scale-105"
+                            className="w-32 h-32 sm:w-36 sm:h-36 rounded-full border-2 border-gray-300 hover:border-blue-500 bg-white hover:bg-blue-50 shadow-sm hover:shadow-md transition-all duration-200 transform hover:scale-105 touch-manipulation"
                         >
-                            <Play className="w-8 h-8 sm:w-10 sm:h-10 text-gray-700 hover:text-blue-600 transition-colors transform translate-x-0.5" />
+                            <Play className="w-12 h-12 sm:w-14 sm:h-14 text-gray-700 hover:text-blue-600 transition-colors transform translate-x-0.5" />
                         </Button>
                     </Link>
                 </div>
                 
                 {/* Next Focus Info */}
                 <div className="mt-8 text-center">
-                    <div className="text-2xl font-semibold text-gray-800">
+                    <div className="text-3xl font-semibold text-gray-800">
                         מיקוד #{nextFocusInfo.number}
                     </div>
-                    <div className="text-gray-500 mt-2">
+                    <div className="text-gray-500 mt-3 text-lg">
                         {nextFocusInfo.time}
                     </div>
                 </div>
@@ -291,15 +294,15 @@ export default function NewFocus() {
 
             {/* Settings Dialog */}
             <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-                <DialogContent className="sm:max-w-[500px] w-[95vw] max-h-[90vh] overflow-y-auto [&>button]:hidden" dir="rtl">
+                <DialogContent className="sm:max-w-[500px] w-[95vw] max-h-[90vh] overflow-y-auto [&>button]:hidden" dir="rtl" style={{ marginTop: 'env(safe-area-inset-top)' }}>
                     <DialogHeader className="text-right">
-                        <DialogTitle className="text-right">הגדרות מיקוד</DialogTitle>
+                        <DialogTitle className="text-right text-xl">הגדרות מיקוד</DialogTitle>
                     </DialogHeader>
                     <div className="grid gap-6 py-4">
                         {/* Schedule Management */}
                         <div>
-                            <div className="flex items-center justify-between mb-3">
-                                <Label className="text-sm sm:text-base font-medium">זמנים קבועים למיקוד</Label>
+                            <div className="flex items-center justify-between mb-4">
+                                <Label className="text-base font-medium">זמנים קבועים למיקוד</Label>
                                 <Button 
                                     variant="ghost" 
                                     size="icon"
@@ -308,9 +311,9 @@ export default function NewFocus() {
                                         setSelectedDays([]); 
                                         setNewScheduleTime('');
                                     }}
-                                    className="h-7 w-7 sm:h-8 sm:w-8"
+                                    className="h-10 w-10 touch-manipulation"
                                 >
-                                    <Plus className="w-3 h-3 sm:w-4 sm:h-4 text-gray-600" />
+                                    <Plus className="w-5 h-5 text-gray-600" />
                                 </Button>
                             </div>
 

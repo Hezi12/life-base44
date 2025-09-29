@@ -494,7 +494,7 @@ export default function Computer() {
 
 
     return (
-        <div className="min-h-screen bg-white p-4" dir="rtl">
+        <div className="min-h-screen bg-white p-4 pb-20" dir="rtl" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)' }}>
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4">
@@ -505,12 +505,13 @@ export default function Computer() {
                         <div className="flex items-center gap-2">
                             <button
                                 onClick={() => setCurrentDate(moment(currentDate).subtract(1, 'day'))}
-                                className="p-1.5 rounded-lg transition-colors hover:bg-gray-100"
+                                className="p-3 rounded-xl transition-colors hover:bg-gray-100 touch-manipulation"
+                                style={{ minWidth: '44px', minHeight: '44px' }}
                             >
-                                <ChevronRight className="w-4 h-4 text-gray-500" />
+                                <ChevronRight className="w-5 h-5 text-gray-500" />
                             </button>
 
-                            <div className="px-3 py-1.5 bg-gray-50 rounded-lg">
+                            <div className="px-4 py-2 bg-gray-50 rounded-xl">
                                 <p className="text-sm font-medium text-gray-800">
                                     {currentDate.format('dddd DD/MM')}
                                 </p>
@@ -518,17 +519,19 @@ export default function Computer() {
 
                             <button
                                 onClick={() => setCurrentDate(moment().startOf('day'))}
-                                className="p-1.5 rounded-lg transition-colors hover:bg-gray-100"
+                                className="p-3 rounded-xl transition-colors hover:bg-gray-100 touch-manipulation"
                                 title="היום"
+                                style={{ minWidth: '44px', minHeight: '44px' }}
                             >
-                                <Calendar className="w-4 h-4 text-gray-500" />
+                                <Calendar className="w-5 h-5 text-gray-500" />
                             </button>
 
                             <button
                                 onClick={() => setCurrentDate(moment(currentDate).add(1, 'day'))}
-                                className="p-1.5 rounded-lg transition-colors hover:bg-gray-100"
+                                className="p-3 rounded-xl transition-colors hover:bg-gray-100 touch-manipulation"
+                                style={{ minWidth: '44px', minHeight: '44px' }}
                             >
-                                <ChevronLeft className="w-4 h-4 text-gray-500" />
+                                <ChevronLeft className="w-5 h-5 text-gray-500" />
                             </button>
                         </div>
 
@@ -536,8 +539,10 @@ export default function Computer() {
                             variant="ghost"
                             size="icon"
                             onClick={() => setIsSettingsOpen(true)}
+                            className="touch-manipulation"
+                            style={{ minWidth: '44px', minHeight: '44px' }}
                         >
-                            <Settings className="w-5 h-5 text-gray-600" />
+                            <Settings className="w-6 h-6 text-gray-600" />
                         </Button>
                     </div>
                 </div>
@@ -942,9 +947,9 @@ export default function Computer() {
                 setNewTopicEnd('');
                 setSelectedSessionId(null);
             }}>
-                <DialogContent className="sm:max-w-lg" dir="rtl">
+                <DialogContent className="sm:max-w-lg w-[95vw]" dir="rtl" style={{ marginTop: 'env(safe-area-inset-top)' }}>
                     <DialogHeader>
-                        <DialogTitle className="text-center text-lg">{isEditingTopic ? 'ערוך נושא עבודה' : 'הוסף נושא עבודה'}</DialogTitle>
+                        <DialogTitle className="text-center text-xl">{isEditingTopic ? 'ערוך נושא עבודה' : 'הוסף נושא עבודה'}</DialogTitle>
                     </DialogHeader>
                     <div className="py-4">
                         {/* Single row with all controls */}
@@ -953,7 +958,7 @@ export default function Computer() {
                             <select 
                                 value={newTopicSubject}
                                 onChange={(e) => setNewTopicSubject(e.target.value)}
-                                className="flex-1 p-2 border rounded text-right bg-white"
+                                className="flex-1 p-3 border rounded-xl text-right bg-white text-base touch-manipulation"
                             >
                                 <option value="">בחר נושא</option>
                                 {workSubjects.map(subject => (
@@ -966,18 +971,18 @@ export default function Computer() {
                                 type="time"
                                 value={newTopicStart}
                                 onChange={(e) => setNewTopicStart(e.target.value)}
-                                className="w-24 text-center"
+                                className="w-28 text-center text-base touch-manipulation"
                             />
                             
                             {/* Separator */}
-                            <span className="text-gray-400">—</span>
+                            <span className="text-gray-400 text-lg">—</span>
                             
                             {/* End Time */}
                             <Input
                                 type="time"
                                 value={newTopicEnd}
                                 onChange={(e) => setNewTopicEnd(e.target.value)}
-                                className="w-24 text-center"
+                                className="w-28 text-center text-base touch-manipulation"
                             />
                             
                             {/* Action Button */}
@@ -985,7 +990,8 @@ export default function Computer() {
                                 onClick={isEditingTopic ? handleUpdateTopic : handleAddTopic}
                                 disabled={!newTopicSubject || !newTopicStart || !newTopicEnd}
                                 size="sm"
-                                className="px-4"
+                                className="px-6 py-3 text-base touch-manipulation"
+                                style={{ minHeight: '44px' }}
                             >
                                 {isEditingTopic ? 'עדכן' : 'הוסף'}
                             </Button>

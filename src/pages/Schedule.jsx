@@ -133,26 +133,26 @@ const TimelineItem = ({ event, isLast }) => {
     const bgColor = event.category_color ? `${event.category_color}15` : '#f8fafc';
 
     return (
-        <div className="flex items-start gap-3 sm:gap-4 relative">
+        <div className="flex items-start gap-4 relative p-4 rounded-xl hover:bg-gray-50 transition-colors">
             {/* אייקון עם רקע צבעוני */}
             <div className="relative flex-shrink-0">
                 <div
-                    className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center ring-2 sm:ring-4 ring-white relative z-10 shadow-sm border border-gray-100"
+                    className="w-12 h-12 rounded-full flex items-center justify-center ring-2 ring-white relative z-10 shadow-sm border border-gray-100"
                     style={{ backgroundColor: bgColor }}
                 >
                     <IconComponent
-                        className="w-4 h-4 sm:w-5 sm:h-5"
+                        className="w-6 h-6"
                         style={{ color: iconColor }}
                     />
                 </div>
             </div>
 
             {/* תוכן האירוע */}
-            <div className="flex-1 pt-1 sm:pt-2">
+            <div className="flex-1 pt-1">
                 <div className="flex items-start justify-between">
                     <div>
-                        <h4 className="font-semibold text-gray-900 text-sm sm:text-base">{event.title}</h4>
-                        <p className="text-xs sm:text-sm text-gray-500 mt-1 font-mono">
+                        <h4 className="font-semibold text-gray-900 text-base leading-tight">{event.title}</h4>
+                        <p className="text-sm text-gray-500 mt-1 font-mono">
                             {moment(event.start_time).format('HH:mm')} - {moment(event.end_time).format('HH:mm')}
                         </p>
                     </div>
@@ -786,7 +786,7 @@ export default function Schedule() {
     const stats = calculateStats();
 
     return (
-        <div className="min-h-screen bg-white p-4 sm:p-8" dir="rtl">
+        <div className="min-h-screen bg-white p-4 sm:p-8 pb-20" dir="rtl" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)' }}>
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 sm:mb-8 gap-4">
@@ -797,12 +797,13 @@ export default function Schedule() {
                         <div className="flex items-center justify-center sm:justify-start gap-2">
                             <button
                                 onClick={() => setCurrentDate(moment(currentDate).subtract(1, 'day'))}
-                                className="p-1.5 rounded-lg transition-colors hover:bg-gray-100"
+                                className="p-3 rounded-xl transition-colors hover:bg-gray-100 touch-manipulation"
+                                style={{ minWidth: '44px', minHeight: '44px' }}
                             >
-                                <ChevronRight className="w-4 h-4 text-gray-500" />
+                                <ChevronRight className="w-5 h-5 text-gray-500" />
                             </button>
 
-                            <div className="px-3 py-1.5 bg-gray-50 rounded-lg">
+                            <div className="px-4 py-2 bg-gray-50 rounded-xl">
                                 <p className="text-sm font-medium text-gray-800">
                                     {currentDate.format('dddd DD/MM')}
                                 </p>
@@ -810,25 +811,28 @@ export default function Schedule() {
 
                             <button
                                 onClick={() => setCurrentDate(moment().startOf('day'))}
-                                className="p-1.5 rounded-lg transition-colors hover:bg-gray-100"
+                                className="p-3 rounded-xl transition-colors hover:bg-gray-100 touch-manipulation"
                                 title="היום"
+                                style={{ minWidth: '44px', minHeight: '44px' }}
                             >
-                                <Calendar className="w-4 h-4 text-gray-500" />
+                                <Calendar className="w-5 h-5 text-gray-500" />
                             </button>
 
                             <button
                                 onClick={() => setCurrentDate(moment(currentDate).add(1, 'day'))}
-                                className="p-1.5 rounded-lg transition-colors hover:bg-gray-100"
+                                className="p-3 rounded-xl transition-colors hover:bg-gray-100 touch-manipulation"
+                                style={{ minWidth: '44px', minHeight: '44px' }}
                             >
-                                <ChevronLeft className="w-4 h-4 text-gray-500" />
+                                <ChevronLeft className="w-5 h-5 text-gray-500" />
                             </button>
 
                             <button
                                 onClick={() => setIsQuickInputOpen(true)}
-                                className="p-1.5 rounded-lg transition-colors hover:bg-gray-100"
+                                className="p-3 rounded-xl transition-colors hover:bg-gray-100 touch-manipulation"
                                 title="הוסף לוח זמנים"
+                                style={{ minWidth: '44px', minHeight: '44px' }}
                             >
-                                <Plus className="w-4 h-4 text-gray-600" />
+                                <Plus className="w-5 h-5 text-gray-600" />
                             </button>
                         </div>
                     </div>
@@ -836,10 +840,11 @@ export default function Schedule() {
                     <div className="flex justify-center sm:justify-end gap-2">
                         <button
                             onClick={() => setIsSettingsOpen(true)}
-                            className="p-2 rounded-lg transition-colors hover:bg-gray-100"
+                            className="p-3 rounded-xl transition-colors hover:bg-gray-100 touch-manipulation"
                             title="הגדרות"
+                            style={{ minWidth: '44px', minHeight: '44px' }}
                         >
-                            <Settings className="w-5 h-5 text-gray-600" />
+                            <Settings className="w-6 h-6 text-gray-600" />
                         </button>
                     </div>
                 </div>
