@@ -104,6 +104,8 @@ export default function Dashboard() {
     const [dailyNotes, setDailyNotes] = useState('');
     const [stickyNotes, setStickyNotes] = useState('');
     const [isLoadingAI, setIsLoadingAI] = useState(false);
+    const [isTypingDailyNotes, setIsTypingDailyNotes] = useState(false);
+    const [isTypingStickyNotes, setIsTypingStickyNotes] = useState(false);
     
     // Add loading states to prevent multiple simultaneous calls for data fetching
     const [isLoadingData, setIsLoadingData] = useState(false);
@@ -324,25 +326,28 @@ export default function Dashboard() {
                     
                     await new Promise(resolve => setTimeout(resolve, 100));
                     
-                    // Load notes based on current date (always current date for Dashboard)
-                    const notesDateStr = dateStr; // Always use current date for Dashboard
-                    
-                    console.log('🔵 Dashboard loading daily notes for date:', notesDateStr);
-                    console.log('🔵 Computer session date:', computerSession ? moment(computerSession.start_time).format('YYYY-MM-DD') : 'No session');
-                    console.log('🔵 Current date:', dateStr);
-                    
-                    const dailyNotesData = await DailyNotes.filter({ date: notesDateStr });
-                    console.log('🔵 Dashboard found daily notes:', dailyNotesData.length, 'entries');
-                    if (dailyNotesData.length > 0) {
-                        console.log('🔵 Dashboard daily notes content:', `"${dailyNotesData[0].content}"`);
-                        console.log('🔵 Dashboard daily notes date from DB:', dailyNotesData[0].date);
+                    // Only update notes if user is not currently typing
+                    if (!isTypingDailyNotes) {
+                        console.log('🔵 Dashboard loading daily notes for date:', notesDateStr);
+                        console.log('🔵 Computer session date:', computerSession ? moment(computerSession.start_time).format('YYYY-MM-DD') : 'No session');
+                        console.log('🔵 Current date:', dateStr);
+                        
+                        const dailyNotesData = await DailyNotes.filter({ date: notesDateStr });
+                        console.log('🔵 Dashboard found daily notes:', dailyNotesData.length, 'entries');
+                        if (dailyNotesData.length > 0) {
+                            console.log('🔵 Dashboard daily notes content:', `"${dailyNotesData[0].content}"`);
+                            console.log('🔵 Dashboard daily notes date from DB:', dailyNotesData[0].date);
+                        }
+                        setDailyNotes(dailyNotesData[0]?.content || '');
                     }
-                    setDailyNotes(dailyNotesData[0]?.content || '');
                     
                     await new Promise(resolve => setTimeout(resolve, 100));
                     
-                    const stickyNotesData = await StickyNotes.list();
-                    setStickyNotes(stickyNotesData[0]?.content || '');
+                    // Only update sticky notes if user is not currently typing
+                    if (!isTypingStickyNotes) {
+                        const stickyNotesData = await StickyNotes.list();
+                        setStickyNotes(stickyNotesData[0]?.content || '');
+                    }
                 }
             }
 
@@ -623,8 +628,14 @@ export default function Dashboard() {
                         <CardContent className="px-4 pb-4 pt-1 flex-1 min-h-0 flex flex-col">
                             <Textarea
                                 value={stickyNotes}
-                                onChange={(e) => setStickyNotes(e.target.value)}
-                                onBlur={() => saveStickyNotes(stickyNotes)}
+                                onChange={(e) => {
+                                    setIsTypingStickyNotes(true);
+                                    setStickyNotes(e.target.value);
+                                }}
+                                onBlur={() => {
+                                    setIsTypingStickyNotes(false);
+                                    saveStickyNotes(stickyNotes);
+                                }}
                                 placeholder="הערות קבועות..."
                                 className="flex-1 resize-none border-gray-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300 text-sm"
                                 style={{ minHeight: '200px' }}
@@ -674,8 +685,14 @@ export default function Dashboard() {
                             <CardContent className="px-4 pb-4 pt-0 flex-1 min-h-0 flex flex-col">
                                 <Textarea
                                     value={dailyNotes}
-                                    onChange={(e) => setDailyNotes(e.target.value)}
-                                    onBlur={() => saveDailyNotes(dailyNotes)}
+                                    onChange={(e) => {
+                                        setIsTypingDailyNotes(true);
+                                        setDailyNotes(e.target.value);
+                                    }}
+                                    onBlur={() => {
+                                        setIsTypingDailyNotes(false);
+                                        saveDailyNotes(dailyNotes);
+                                    }}
                                     placeholder="הערות יומיות..."
                                     className="flex-1 resize-none border-gray-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300 text-sm min-h-0"
                                     autoComplete="off"
@@ -714,8 +731,14 @@ export default function Dashboard() {
                             <CardContent className="px-4 pb-4 pt-1 flex-1 min-h-0 flex flex-col">
                                 <Textarea
                                     value={stickyNotes}
-                                    onChange={(e) => setStickyNotes(e.target.value)}
-                                    onBlur={() => saveStickyNotes(stickyNotes)}
+                                    onChange={(e) => {
+                                        setIsTypingStickyNotes(true);
+                                        setStickyNotes(e.target.value);
+                                    }}
+                                    onBlur={() => {
+                                        setIsTypingStickyNotes(false);
+                                        saveStickyNotes(stickyNotes);
+                                    }}
                                     placeholder="הערות קבועות..."
                                     className="flex-1 resize-none border-gray-200 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-gray-300 text-sm"
                                     style={{ minHeight: '300px' }}
