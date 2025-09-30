@@ -87,21 +87,32 @@ export default function NewActiveFocusSession() {
                     const scheduledTime = moment(schedule.time, 'HH:mm');
                     const notificationTime = scheduledTime.clone().subtract(settings.notification_minutes_before, 'minutes');
                     
-                    // בדוק אם הגיע זמן ההתראה
-                    if (now.isSame(notificationTime, 'minute') && now.isSame(notificationTime, 'hour')) {
-                        // שלח התראה במייל
-                        await SendEmail({
-                            to: 'schwartzhezi@gmail.com',
-                            subject: `התראה: מיקוד מתוזמן בעוד ${settings.notification_minutes_before} דקות`,
-                            body: `שלום!
+                    // בדוק אם הגיע זמן ההתראה (בטווח של דקה)
+                    const timeDiff = Math.abs(now.diff(notificationTime, 'minutes'));
+                    if (timeDiff <= 1) {
+                        // בדוק אם כבר שלחנו התראה לזמן הזה היום
+                        const notificationKey = `focus_notification_${today}_${schedule.time}_${settings.notification_minutes_before}`;
+                        const lastNotification = localStorage.getItem(notificationKey);
+                        const todayDate = moment().format('YYYY-MM-DD');
+                        
+                        if (!lastNotification || lastNotification !== todayDate) {
+                            // שלח התראה במייל
+                            await SendEmail({
+                                to: 'schwartzhezi@gmail.com',
+                                subject: `התראה: מיקוד מתוזמן בעוד ${settings.notification_minutes_before} דקות`,
+                                body: `שלום!
 
 המיקוד המתוזמן שלך יתחיל בעוד ${settings.notification_minutes_before} דקות (${scheduledTime.format('HH:mm')}).
 
 זמן להתכונן למיקוד!
 
 המערכת שלך`
-                        });
-                        
+                            });
+                            
+                            // שמור שהתראה נשלחה היום
+                            localStorage.setItem(notificationKey, todayDate);
+                            console.log('✅ Focus notification sent for', schedule.time);
+                        }
                     }
                 }
             } catch (error) {
@@ -109,8 +120,11 @@ export default function NewActiveFocusSession() {
             }
         };
 
-        // בדוק התראות כל דקה
-        const notificationInterval = setInterval(checkFocusNotifications, 60000);
+        // בדוק התראות מיד כשהדף נטען
+        checkFocusNotifications();
+        
+        // בדוק התראות כל 30 שניות (יותר מדויק)
+        const notificationInterval = setInterval(checkFocusNotifications, 30000);
         
         return () => clearInterval(notificationInterval);
     }, []);
