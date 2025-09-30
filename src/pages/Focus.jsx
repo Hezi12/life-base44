@@ -248,6 +248,56 @@ export default function NewFocus() {
         }
     };
 
+    const testScheduledEmail = async () => {
+        setIsTestingEmail(true);
+        try {
+            // קבל תאריך ושעה מהמשתמש
+            const testDate = prompt('הזן תאריך לבדיקה (YYYY-MM-DD):', moment().format('YYYY-MM-DD'));
+            const testTime = prompt('הזן שעה לבדיקה (HH:mm):', moment().add(1, 'minute').format('HH:mm'));
+            
+            if (!testDate || !testTime) {
+                alert('❌ נא להזין תאריך ושעה תקינים');
+                setIsTestingEmail(false);
+                return;
+            }
+
+            // בדוק אם התאריך והשעה תקינים
+            const testDateTime = moment(`${testDate} ${testTime}`, 'YYYY-MM-DD HH:mm');
+            if (!testDateTime.isValid()) {
+                alert('❌ תאריך או שעה לא תקינים');
+                setIsTestingEmail(false);
+                return;
+            }
+
+            // שלח מייל בדיקה
+            await SendEmail({
+                to: 'schwartzhezi@gmail.com',
+                subject: `בדיקת התראות מתוזמת - ${testDateTime.format('DD/MM/YYYY HH:mm')}`,
+                body: `שלום!
+
+זוהי בדיקת התראות מיקוד מתוזמת.
+
+התאריך והשעה שנבחרו: ${testDateTime.format('DD/MM/YYYY HH:mm')}
+זמן הבדיקה: ${moment().format('DD/MM/YYYY HH:mm')}
+
+המערכת שלך עובדת מושלם! 🎯
+
+המערכת שלך`
+            });
+            
+            alert(`✅ מייל בדיקה מתוזמת נשלח בהצלחה!
+תאריך: ${testDateTime.format('DD/MM/YYYY')}
+שעה: ${testDateTime.format('HH:mm')}
+
+בדוק את הקונסול לפרטים.`);
+        } catch (error) {
+            console.error('Error testing scheduled email:', error);
+            alert('❌ שגיאה בשליחת מייל הבדיקה המתוזמת. בדוק את הקונסול לפרטים.');
+        } finally {
+            setIsTestingEmail(false);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-white flex flex-col pb-20" dir="rtl" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)' }}>
             {/* Top Icons - Left Side */}
@@ -392,7 +442,7 @@ export default function NewFocus() {
                             />
                         </div>
 
-                        {/* כפתור בדיקת מייל */}
+                        {/* כפתורי בדיקת מייל */}
                         <div className="flex flex-col items-center pt-2 space-y-2">
                             <Button 
                                 onClick={testEmailNotification}
@@ -407,7 +457,24 @@ export default function NewFocus() {
                                         שולח...
                                     </>
                                 ) : (
-                                    'בדיקת מייל'
+                                    'בדיקת מייל רגילה'
+                                )}
+                            </Button>
+                            
+                            <Button 
+                                onClick={testScheduledEmail}
+                                disabled={isTestingEmail}
+                                variant="outline"
+                                size="sm"
+                                className="text-xs"
+                            >
+                                {isTestingEmail ? (
+                                    <>
+                                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-gray-600 mr-2"></div>
+                                        שולח...
+                                    </>
+                                ) : (
+                                    'בדיקת מייל מתוזמת'
                                 )}
                             </Button>
                             

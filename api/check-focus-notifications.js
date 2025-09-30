@@ -97,6 +97,7 @@ async function checkFocusNotifications() {
     const today = now.format('dddd'); // יום בשבוע באנגלית
     
     console.log(`Today: ${today}, Current time: ${now.format('HH:mm')}`);
+    console.log('Settings:', JSON.stringify(settings, null, 2));
     
     // בדוק אם יש מיקוד מתוזמן היום
     const todaySchedules = settings.schedule.filter(schedule => schedule.day === today);
@@ -116,11 +117,13 @@ async function checkFocusNotifications() {
       
       // בדוק אם הגיע זמן ההתראה (בטווח של דקה)
       const timeDiff = Math.abs(now.diff(notificationTime, 'minutes'));
+      console.log(`Time difference: ${timeDiff} minutes`);
+      
       if (timeDiff <= 1) {
         // בדוק אם כבר שלחנו התראה לזמן הזה היום
         const notificationKey = `focus_notification_${today}_${schedule.time}_${settings.notification_minutes_before}`;
         
-        // בדוק ב-localStorage (אם יש גישה) או במסד נתונים
+        // בדוק במסד נתונים
         const { data: existingNotification } = await supabase
           .from('focus_notifications_log')
           .select('*')
