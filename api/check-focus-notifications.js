@@ -1,5 +1,5 @@
 // API endpoint לבדיקת התראות מיקוד מתוזמן
-// רץ כל דקה דרך Vercel Cron Job
+// ניתן לקרוא לו ידנית או דרך שירות חיצוני
 
 import { createClient } from '@supabase/supabase-js';
 import nodemailer from 'nodemailer';
