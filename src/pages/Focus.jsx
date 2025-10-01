@@ -253,7 +253,7 @@ export default function NewFocus() {
         try {
             // קבל תאריך ושעה מהמשתמש
             const testDate = prompt('הזן תאריך לבדיקה (YYYY-MM-DD):', moment().format('YYYY-MM-DD'));
-            const testTime = prompt('הזן שעה לבדיקה (HH:mm):', moment().add(1, 'minute').format('HH:mm'));
+            const testTime = prompt('הזן שעה לבדיקה (HH:mm):', moment().add(2, 'minutes').format('HH:mm'));
             
             if (!testDate || !testTime) {
                 alert('❌ נא להזין תאריך ושעה תקינים');
@@ -269,31 +269,79 @@ export default function NewFocus() {
                 return;
             }
 
-            // שלח מייל בדיקה
-            await SendEmail({
-                to: 'schwartzhezi@gmail.com',
-                subject: `בדיקת התראות מתוזמת - ${testDateTime.format('DD/MM/YYYY HH:mm')}`,
-                body: `שלום!
+            // בדוק אם התאריך והשעה בעתיד
+            const now = moment();
+            if (testDateTime.isBefore(now)) {
+                alert('❌ הזמן שבחרת כבר עבר! בחר זמן בעתיד.');
+                setIsTestingEmail(false);
+                return;
+            }
+
+            // חשב כמה זמן לחכות (במילישניות)
+            const timeToWait = testDateTime.diff(now);
+            const minutesToWait = Math.round(timeToWait / 60000);
+
+            // הצג הודעת אישור
+            const confirmed = confirm(`האם לתזמן מייל בדיקה ל-${testDateTime.format('DD/MM/YYYY HH:mm')}?
+            
+זה בעוד ${minutesToWait} דקות.
+
+המייל יישלח אוטומטית ברגע שיגיע הזמן.`);
+
+            if (!confirmed) {
+                setIsTestingEmail(false);
+                return;
+            }
+
+            // הגדר טיימר לשליחת המייל
+            console.log(`⏰ Scheduling test email for ${testDateTime.format('DD/MM/YYYY HH:mm')} (in ${minutesToWait} minutes)`);
+            
+            alert(`✅ מייל מתוזמן הוגדר בהצלחה!
+            
+המייל יישלח ב-${testDateTime.format('DD/MM/YYYY HH:mm')}
+זה בעוד ${minutesToWait} דקות.
+
+אל תסגור את הדף עד שהמייל יישלח!`);
+
+            setIsTestingEmail(false);
+
+            // המתן עד הזמן המתוזמן
+            setTimeout(async () => {
+                try {
+                    console.log(`📧 Sending scheduled test email now (${moment().format('DD/MM/YYYY HH:mm')})`);
+                    
+                    await SendEmail({
+                        to: 'schwartzhezi@gmail.com',
+                        subject: `בדיקת התראות מתוזמת - ${testDateTime.format('DD/MM/YYYY HH:mm')}`,
+                        body: `שלום!
 
 זוהי בדיקת התראות מיקוד מתוזמת.
 
-התאריך והשעה שנבחרו: ${testDateTime.format('DD/MM/YYYY HH:mm')}
-זמן הבדיקה: ${moment().format('DD/MM/YYYY HH:mm')}
+הזמן המתוזמן: ${testDateTime.format('DD/MM/YYYY HH:mm')}
+זמן שליחה בפועל: ${moment().format('DD/MM/YYYY HH:mm')}
 
 המערכת שלך עובדת מושלם! 🎯
 
 המערכת שלך`
-            });
-            
-            alert(`✅ מייל בדיקה מתוזמת נשלח בהצלחה!
-תאריך: ${testDateTime.format('DD/MM/YYYY')}
-שעה: ${testDateTime.format('HH:mm')}
+                    });
+                    
+                    alert(`✅ מייל מתוזמן נשלח בהצלחה!
+                    
+זמן מתוזמן: ${testDateTime.format('DD/MM/YYYY HH:mm')}
+זמן שליחה: ${moment().format('DD/MM/YYYY HH:mm')}
 
-בדוק את הקונסול לפרטים.`);
+בדוק את התיבה שלך!`);
+                    
+                    console.log('✅ Scheduled test email sent successfully');
+                } catch (error) {
+                    console.error('❌ Error sending scheduled test email:', error);
+                    alert('❌ שגיאה בשליחת המייל המתוזמן. בדוק את הקונסול לפרטים.');
+                }
+            }, timeToWait);
+
         } catch (error) {
-            console.error('Error testing scheduled email:', error);
-            alert('❌ שגיאה בשליחת מייל הבדיקה המתוזמת. בדוק את הקונסול לפרטים.');
-        } finally {
+            console.error('Error setting up scheduled email:', error);
+            alert('❌ שגיאה בהגדרת המייל המתוזמן. בדוק את הקונסול לפרטים.');
             setIsTestingEmail(false);
         }
     };
