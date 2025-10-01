@@ -181,19 +181,23 @@ export default async function handler(req, res) {
   }
 
   try {
+    console.log('🤖 UptimeRobot check triggered at:', moment().format('YYYY-MM-DD HH:mm:ss'));
+    
     await checkFocusNotifications();
     
     res.status(200).json({ 
       success: true, 
       message: 'Focus notifications checked successfully',
-      timestamp: moment().format('YYYY-MM-DD HH:mm:ss')
+      timestamp: moment().format('YYYY-MM-DD HH:mm:ss'),
+      checkedBy: 'UptimeRobot or Manual'
     });
 
   } catch (error) {
-    console.error('Cron job error:', error);
+    console.error('❌ Check notifications error:', error);
     res.status(500).json({ 
       success: false, 
-      error: error.message 
+      error: error.message,
+      timestamp: moment().format('YYYY-MM-DD HH:mm:ss')
     });
   }
 }
