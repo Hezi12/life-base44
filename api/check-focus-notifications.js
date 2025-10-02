@@ -112,14 +112,19 @@ async function checkFocusNotifications() {
       // 🕐 המר גם את next_session_suggestion לזמן ישראלי
       const nextSessionTime = moment(nextSession[0].next_session_suggestion).utcOffset('+03:00');
       const notificationTime = nextSessionTime.clone().subtract(settings.notification_minutes_before, 'minutes');
-      const timeDiff = Math.abs(now.diff(notificationTime, 'minutes'));
+      const timeDiffFromNotification = Math.abs(now.diff(notificationTime, 'minutes'));
+      const timeDiffFromSession = Math.abs(now.diff(nextSessionTime, 'minutes'));
       
-      console.log(`📅 Next session: ${nextSessionTime.format('YYYY-MM-DD HH:mm')}, Notification time: ${notificationTime.format('HH:mm')}, Time diff: ${timeDiff} min`);
+      console.log(`📅 Next session: ${nextSessionTime.format('YYYY-MM-DD HH:mm')}, Notification time: ${notificationTime.format('HH:mm')}, Time diff from notification: ${timeDiffFromNotification} min, Time diff from session: ${timeDiffFromSession} min`);
       
-      if (timeDiff <= 1) {
-        const notificationKey = `focus_notification_next_${nextSessionTime.format('YYYY-MM-DD_HH:mm')}`;
+      // שלח התראה אם:
+      // 1. הגענו לזמן ההתראה (X דקות לפני) - timeDiff <= 2 (חלון רחב יותר!)
+      // 2. הגענו לזמן המיקוד עצמו - timeDiff <= 1
+      
+      // התראה לפני המיקוד
+      if (timeDiffFromNotification <= 2) {
+        const notificationKey = `focus_notification_before_${nextSessionTime.format('YYYY-MM-DD_HH:mm')}`;
         
-        // בדוק אם כבר נשלחה התראה
         const { data: existingNotification } = await supabase
           .from('focus_notifications_log')
           .select('*')
@@ -127,11 +132,11 @@ async function checkFocusNotifications() {
           .limit(1);
 
         if (!existingNotification || existingNotification.length === 0) {
-          console.log('🚀 Sending notification for next session...');
+          console.log('🚀 Sending "before" notification for next session...');
           
           const emailResult = await sendEmail({
             to: 'schwartzhezi@gmail.com',
-            subject: `התראה: המיקוד הבא בעוד ${settings.notification_minutes_before} דקות`,
+            subject: `⏰ התראה: המיקוד הבא בעוד ${settings.notification_minutes_before} דקות`,
             body: `שלום!
 
 המיקוד הבא שלך יתחיל בעוד ${settings.notification_minutes_before} דקות (${nextSessionTime.format('HH:mm')}).
@@ -146,18 +151,63 @@ async function checkFocusNotifications() {
               .from('focus_notifications_log')
               .insert({
                 notification_key: notificationKey,
-                date: moment().format('YYYY-MM-DD'),
-                time: moment().format('HH:mm:ss'),
+                date: moment().utcOffset('+03:00').format('YYYY-MM-DD'),
+                time: moment().utcOffset('+03:00').format('HH:mm:ss'),
                 schedule_time: nextSessionTime.format('HH:mm'),
                 notification_minutes_before: settings.notification_minutes_before,
                 email_sent: true,
                 message_id: emailResult.messageId
               });
 
-            console.log('✅ Next session notification sent!');
+            console.log('✅ "Before" notification sent!');
           }
         } else {
-          console.log('⏭️ Notification already sent for next session');
+          console.log('⏭️ "Before" notification already sent');
+        }
+      }
+      
+      // התראה בזמן המיקוד עצמו
+      if (timeDiffFromSession <= 1) {
+        const notificationKey = `focus_notification_now_${nextSessionTime.format('YYYY-MM-DD_HH:mm')}`;
+        
+        const { data: existingNotification } = await supabase
+          .from('focus_notifications_log')
+          .select('*')
+          .eq('notification_key', notificationKey)
+          .limit(1);
+
+        if (!existingNotification || existingNotification.length === 0) {
+          console.log('🚀 Sending "NOW" notification for session start...');
+          
+          const emailResult = await sendEmail({
+            to: 'schwartzhezi@gmail.com',
+            subject: `🎯 זמן המיקוד הגיע!`,
+            body: `שלום!
+
+זמן המיקוד שלך הגיע! (${nextSessionTime.format('HH:mm')})
+
+בואו נתחיל למקד! 💪
+
+המערכת שלך`
+          });
+
+          if (emailResult.success) {
+            await supabase
+              .from('focus_notifications_log')
+              .insert({
+                notification_key: notificationKey,
+                date: moment().utcOffset('+03:00').format('YYYY-MM-DD'),
+                time: moment().utcOffset('+03:00').format('HH:mm:ss'),
+                schedule_time: nextSessionTime.format('HH:mm'),
+                notification_minutes_before: 0,
+                email_sent: true,
+                message_id: emailResult.messageId
+              });
+
+            console.log('✅ "NOW" notification sent!');
+          }
+        } else {
+          console.log('⏭️ "NOW" notification already sent');
         }
       }
     }

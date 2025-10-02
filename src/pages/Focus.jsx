@@ -129,18 +129,20 @@ export default function NewFocus() {
                 if (lastSession.length > 0 && lastSession[0].next_session_suggestion) {
                     const nextSessionTime = moment(lastSession[0].next_session_suggestion);
                     const notificationTime = nextSessionTime.clone().subtract(settings.notification_minutes_before, 'minutes');
-                    const timeDiff = Math.abs(now.diff(notificationTime, 'minutes'));
+                    const timeDiffFromNotification = Math.abs(now.diff(notificationTime, 'minutes'));
+                    const timeDiffFromSession = Math.abs(now.diff(nextSessionTime, 'minutes'));
                     
-                    console.log(`📅 Client: Next session: ${nextSessionTime.format('YYYY-MM-DD HH:mm')}, Time diff: ${timeDiff} min`);
+                    console.log(`📅 Client: Next session: ${nextSessionTime.format('YYYY-MM-DD HH:mm')}, Time diff from notification: ${timeDiffFromNotification} min, Time diff from session: ${timeDiffFromSession} min`);
                     
-                    if (timeDiff <= 1) {
-                        const notificationKey = `focus_notification_next_${nextSessionTime.format('YYYY-MM-DD_HH:mm')}`;
+                    // התראה לפני המיקוד (חלון של 2 דקות)
+                    if (timeDiffFromNotification <= 2) {
+                        const notificationKey = `focus_notification_before_${nextSessionTime.format('YYYY-MM-DD_HH:mm')}`;
                         const lastNotification = localStorage.getItem(notificationKey);
                         
                         if (!lastNotification) {
                             await SendEmail({
                                 to: 'schwartzhezi@gmail.com',
-                                subject: `התראה: המיקוד הבא בעוד ${settings.notification_minutes_before} דקות`,
+                                subject: `⏰ התראה: המיקוד הבא בעוד ${settings.notification_minutes_before} דקות`,
                                 body: `שלום!
 
 המיקוד הבא שלך יתחיל בעוד ${settings.notification_minutes_before} דקות (${nextSessionTime.format('HH:mm')}).
@@ -151,7 +153,30 @@ export default function NewFocus() {
                             });
                             
                             localStorage.setItem(notificationKey, 'sent');
-                            console.log('✅ Next session notification sent!');
+                            console.log('✅ "Before" notification sent!');
+                        }
+                    }
+                    
+                    // התראה בזמן המיקוד עצמו
+                    if (timeDiffFromSession <= 1) {
+                        const notificationKey = `focus_notification_now_${nextSessionTime.format('YYYY-MM-DD_HH:mm')}`;
+                        const lastNotification = localStorage.getItem(notificationKey);
+                        
+                        if (!lastNotification) {
+                            await SendEmail({
+                                to: 'schwartzhezi@gmail.com',
+                                subject: `🎯 זמן המיקוד הגיע!`,
+                                body: `שלום!
+
+זמן המיקוד שלך הגיע! (${nextSessionTime.format('HH:mm')})
+
+בואו נתחיל למקד! 💪
+
+המערכת שלך`
+                            });
+                            
+                            localStorage.setItem(notificationKey, 'sent');
+                            console.log('✅ "NOW" notification sent!');
                         }
                     }
                 }
