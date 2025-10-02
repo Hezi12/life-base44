@@ -93,10 +93,11 @@ async function checkFocusNotifications() {
     }
 
     const settings = focusSettings[0];
-    const now = moment();
+    // 🕐 חשוב! השתמש בזמן ישראלי (UTC+3)
+    const now = moment().utcOffset('+03:00');
     const today = now.format('dddd'); // יום בשבוע באנגלית
     
-    console.log(`Today: ${today}, Current time: ${now.format('HH:mm')}`);
+    console.log(`Today: ${today}, Current time (Israel): ${now.format('HH:mm')}`);
     
     // 🆕 בדוק גם מיקוד בא (Next Session)
     const { data: nextSession } = await supabase
@@ -108,7 +109,8 @@ async function checkFocusNotifications() {
 
     // בדוק אם יש next_session_suggestion שקרוב
     if (nextSession && nextSession.length > 0 && nextSession[0].next_session_suggestion) {
-      const nextSessionTime = moment(nextSession[0].next_session_suggestion);
+      // 🕐 המר גם את next_session_suggestion לזמן ישראלי
+      const nextSessionTime = moment(nextSession[0].next_session_suggestion).utcOffset('+03:00');
       const notificationTime = nextSessionTime.clone().subtract(settings.notification_minutes_before, 'minutes');
       const timeDiff = Math.abs(now.diff(notificationTime, 'minutes'));
       
