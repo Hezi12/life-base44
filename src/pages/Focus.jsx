@@ -123,9 +123,42 @@ export default function NewFocus() {
                 }
 
                 const now = moment();
+                
+                // 🆕 בדוק גם מיקוד בא (Next Session)
+                const lastSession = await FocusSession.list('-session_number', 1);
+                if (lastSession.length > 0 && lastSession[0].next_session_suggestion) {
+                    const nextSessionTime = moment(lastSession[0].next_session_suggestion);
+                    const notificationTime = nextSessionTime.clone().subtract(settings.notification_minutes_before, 'minutes');
+                    const timeDiff = Math.abs(now.diff(notificationTime, 'minutes'));
+                    
+                    console.log(`📅 Client: Next session: ${nextSessionTime.format('YYYY-MM-DD HH:mm')}, Time diff: ${timeDiff} min`);
+                    
+                    if (timeDiff <= 1) {
+                        const notificationKey = `focus_notification_next_${nextSessionTime.format('YYYY-MM-DD_HH:mm')}`;
+                        const lastNotification = localStorage.getItem(notificationKey);
+                        
+                        if (!lastNotification) {
+                            await SendEmail({
+                                to: 'schwartzhezi@gmail.com',
+                                subject: `התראה: המיקוד הבא בעוד ${settings.notification_minutes_before} דקות`,
+                                body: `שלום!
+
+המיקוד הבא שלך יתחיל בעוד ${settings.notification_minutes_before} דקות (${nextSessionTime.format('HH:mm')}).
+
+זמן להתכונן למיקוד!
+
+המערכת שלך`
+                            });
+                            
+                            localStorage.setItem(notificationKey, 'sent');
+                            console.log('✅ Next session notification sent!');
+                        }
+                    }
+                }
+                
                 const today = now.format('dddd'); // יום בשבוע באנגלית
                 
-                // בדוק אם יש מיקוד מתוזמן היום
+                // בדוק אם יש מיקוד מתוזמן היום (Schedule)
                 const todaySchedules = settings.schedule.filter(schedule => schedule.day === today);
                 
                 for (const schedule of todaySchedules) {

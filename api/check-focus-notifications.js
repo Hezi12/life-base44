@@ -97,9 +97,70 @@ async function checkFocusNotifications() {
     const today = now.format('dddd'); // יום בשבוע באנגלית
     
     console.log(`Today: ${today}, Current time: ${now.format('HH:mm')}`);
-    console.log('Settings:', JSON.stringify(settings, null, 2));
     
-    // בדוק אם יש מיקוד מתוזמן היום
+    // 🆕 בדוק גם מיקוד בא (Next Session)
+    const { data: nextSession } = await supabase
+      .from('focus_sessions')
+      .select('*')
+      .not('next_session_suggestion', 'is', null)
+      .order('next_session_suggestion', { ascending: true })
+      .limit(1);
+
+    // בדוק אם יש next_session_suggestion שקרוב
+    if (nextSession && nextSession.length > 0 && nextSession[0].next_session_suggestion) {
+      const nextSessionTime = moment(nextSession[0].next_session_suggestion);
+      const notificationTime = nextSessionTime.clone().subtract(settings.notification_minutes_before, 'minutes');
+      const timeDiff = Math.abs(now.diff(notificationTime, 'minutes'));
+      
+      console.log(`📅 Next session: ${nextSessionTime.format('YYYY-MM-DD HH:mm')}, Notification time: ${notificationTime.format('HH:mm')}, Time diff: ${timeDiff} min`);
+      
+      if (timeDiff <= 1) {
+        const notificationKey = `focus_notification_next_${nextSessionTime.format('YYYY-MM-DD_HH:mm')}`;
+        
+        // בדוק אם כבר נשלחה התראה
+        const { data: existingNotification } = await supabase
+          .from('focus_notifications_log')
+          .select('*')
+          .eq('notification_key', notificationKey)
+          .limit(1);
+
+        if (!existingNotification || existingNotification.length === 0) {
+          console.log('🚀 Sending notification for next session...');
+          
+          const emailResult = await sendEmail({
+            to: 'schwartzhezi@gmail.com',
+            subject: `התראה: המיקוד הבא בעוד ${settings.notification_minutes_before} דקות`,
+            body: `שלום!
+
+המיקוד הבא שלך יתחיל בעוד ${settings.notification_minutes_before} דקות (${nextSessionTime.format('HH:mm')}).
+
+זמן להתכונן למיקוד!
+
+המערכת שלך`
+          });
+
+          if (emailResult.success) {
+            await supabase
+              .from('focus_notifications_log')
+              .insert({
+                notification_key: notificationKey,
+                date: moment().format('YYYY-MM-DD'),
+                time: moment().format('HH:mm:ss'),
+                schedule_time: nextSessionTime.format('HH:mm'),
+                notification_minutes_before: settings.notification_minutes_before,
+                email_sent: true,
+                message_id: emailResult.messageId
+              });
+
+            console.log('✅ Next session notification sent!');
+          }
+        } else {
+          console.log('⏭️ Notification already sent for next session');
+        }
+      }
+    }
+    
+    // בדוק אם יש מיקוד מתוזמן היום (Schedule)
     const todaySchedules = settings.schedule.filter(schedule => schedule.day === today);
     
     if (todaySchedules.length === 0) {
