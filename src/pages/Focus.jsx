@@ -116,12 +116,21 @@ export default function NewFocus() {
 
     // מערכת התראות למיקוד מתוזמן
     useEffect(() => {
+        let isProcessing = false; // מנגנון נעילה למניעת race conditions
+        
         const checkFocusNotifications = async () => {
+            // אם כבר רץ בדיקה, דלג
+            if (isProcessing) {
+                console.log('⏭️ Skipping check - already processing');
+                return;
+            }
+            
             try {
                 if (!settings.notify_on_time) {
                     return; // התראות כבויות
                 }
 
+                isProcessing = true;
                 const now = moment();
                 
                 // 🆕 בדוק גם מיקוד בא (Next Session)
@@ -140,6 +149,9 @@ export default function NewFocus() {
                         const lastNotification = localStorage.getItem(notificationKey);
                         
                         if (!lastNotification) {
+                            // נעל מיד לפני השליחה
+                            localStorage.setItem(notificationKey, 'sending');
+                            
                             await SendEmail({
                                 to: 'schwartzhezi@gmail.com',
                                 subject: `⏰ התראה: המיקוד הבא בעוד ${settings.notification_minutes_before} דקות`,
@@ -154,6 +166,8 @@ export default function NewFocus() {
                             
                             localStorage.setItem(notificationKey, 'sent');
                             console.log('✅ "Before" notification sent!');
+                        } else {
+                            console.log('⏭️ "Before" notification already sent or sending');
                         }
                     }
                     
@@ -163,6 +177,9 @@ export default function NewFocus() {
                         const lastNotification = localStorage.getItem(notificationKey);
                         
                         if (!lastNotification) {
+                            // נעל מיד לפני השליחה
+                            localStorage.setItem(notificationKey, 'sending');
+                            
                             await SendEmail({
                                 to: 'schwartzhezi@gmail.com',
                                 subject: `🎯 זמן המיקוד הגיע!`,
@@ -177,6 +194,8 @@ export default function NewFocus() {
                             
                             localStorage.setItem(notificationKey, 'sent');
                             console.log('✅ "NOW" notification sent!');
+                        } else {
+                            console.log('⏭️ "NOW" notification already sent or sending');
                         }
                     }
                 }
@@ -220,6 +239,8 @@ export default function NewFocus() {
                 }
             } catch (error) {
                 console.error('Error checking focus notifications:', error);
+            } finally {
+                isProcessing = false;
             }
         };
 
